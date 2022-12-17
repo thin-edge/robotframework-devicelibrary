@@ -1,4 +1,4 @@
-# robotframework-c8y
+# robotframework-devicelibrary
 
 Robot Framework Library for Cumulocity
 
@@ -7,13 +7,13 @@ Robot Framework Library for Cumulocity
 1. Install via pip
 
     ```sh
-    pip install git+https://github.com/reubenmiller/robotframework-c8y.git@0.0.9
+    pip install git+https://github.com/reubenmiller/robotframework-devicelibrary.git@0.0.1
     ```
 
     Or add it to your `requirements.txt` file
 
     ```sh
-    robotframework-c8y @ git+https://github.com/reubenmiller/robotframework-c8y.git@0.0.9
+    robotframework-devicelibrary @ git+https://github.com/reubenmiller/robotframework-devicelibrary.git@0.0.1
     ```
 
     Then install it via
@@ -22,29 +22,45 @@ Robot Framework Library for Cumulocity
     pip install -r requirements.txt
     ```
 
-2. Create a `.env` file with the following environment variables
+2. Create a `.env` file with the following environment variables (which will be the secrets)
 
     ```sh
-    C8Y_BASEURL=https://example.tenant.c8y.com
-    C8Y_USER=
-    C8Y_TENANT=t12345
-    C8Y_PASSWORD=""
+    # Only needed if you are using colima
+    DOCKER_HOST="unix:///Users/myuser/.colima/docker.sock"
+
+    # SSH config (which device should be tested when using ssh)
+    SSH_CONFIG_HOSTNAME=
+    SSH_CONFIG_USERNAME=
+    SSH_CONFIG_PASSWORD=
     ```
 
-3. Create a Robot test `tests/Example.robot`
+3. Create a common resource which contains your settings `tests/common.resource`
+
+    ```robot
+    ${DEVICE_ADAPTER}    docker
+    &{SSH_CONFIG}        hostname=%{SSH_CONFIG_HOSTNAME= }    username=%{SSH_CONFIG_USERNAME= }    password=%{SSH_CONFIG_PASSWORD= }
+    &{DOCKER_CONFIG}     image=%{DOCKER_CONFIG_IMAGE=debian-systemd}
+    ```
+
+    **Note**
+
+    The common resource references the secrets stored in the .env file so secrets can be kept out of the repository.
+
+4. Create a Robot test `tests/Example.robot`
 
     ```robot
     *** Settings ***
-    Library    Cumulocity
+    Resource       common.resource
+    Library        DeviceLibrary    adapter=ssh
 
     *** Test Cases ***
-    Device initialization sequence
-        Device Should Exist                      tedge01
-        Device Should Have Installed Software    tedge
-        Device Should Have Measurements          minimum=1   type=myCustomMeasurement
+    Check command execution
+        Setup Device
+        Execute Command On Device    ls -la /etc/
+        Process Should Be Running On Device    ssh
     ```
 
-4. Run the test
+5. Run the test
 
     ```sh
     robot tests/Example.robot
@@ -52,24 +68,10 @@ Robot Framework Library for Cumulocity
 
 ## Library docs
 
-Checkout the [Cumulocity Library docs](./Cumulocity/Cumulocity.rst)
+Checkout the [DeviceLibrary docs](./docs/DeviceLibrary.rst)
 
 You can generate the docs yourself using:
 
 ```sh
-libdoc Cumulocity/Cumulocity.py show > Cumulocity/Cumulocity.rst
+libdoc DeviceLibrary/DeviceLibrary.py show > docs/DeviceLibrary.rst
 ```
-
-## TODO
-
-* Project structure
-    * Add `requirements.txt` to document the dependencies in an installable manner, `pip install -r requirements.txt`
-    * Add `.devcontainer` to make it easier to start writing tests
-
-
-* Device library
-    * install all packages from a specific folder (or only selecte packages matching a pattern)
-
-* JSON assertions
-* Child device assertions
-* 
