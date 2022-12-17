@@ -47,6 +47,8 @@ class DeviceLibrary:
     # Default parameter settings
     DEFAULT_IMAGE = "debian-systemd"
 
+    DEFAULT_BOOTSTRAP_SCRIPT = "/setup/bootstrap.sh"
+
     # Default adapter type
     DEFAULT_ADAPTER = "docker"
 
@@ -59,10 +61,12 @@ class DeviceLibrary:
         self,
         image: str = DEFAULT_IMAGE,
         adapter: str = DEFAULT_ADAPTER,
+        bootstrap_script: str = DEFAULT_BOOTSTRAP_SCRIPT,
     ):
         self.devices = {}
         self.__image = image
         self.adapter = adapter
+        self.__bootstrap_script = bootstrap_script
         self.current: DeviceAdapter = None
         self.test_start_time = None
 
@@ -137,6 +141,8 @@ class DeviceLibrary:
         config = BuiltIn().get_variable_value("&{{{}_CONFIG}}".format(adapter_type.upper()), {}) or {}
         logging.info(f"Adapter config (type={adapter_type}): {config}")
 
+        bootstrap_script=config.pop("bootstrap_script", self.__bootstrap_script),
+
         if adapter_type == "docker":
             device_sn = generate_name()
 
@@ -160,8 +166,8 @@ class DeviceLibrary:
         # install problems when systemd is not running (during the build stage)
         # But it also allows us to possibly customize which version is installed
         # for the test
-        if not skip_bootstrap:
-            device.assert_command("/demo/bootstrap.sh", log_output=True, shell=True)
+        if not skip_bootstrap and bootstrap_script:
+            device.assert_command(bootstrap_script, log_output=True, shell=True)
 
         self.devices[device_sn] = device
         self.current = device
