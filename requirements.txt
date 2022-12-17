@@ -1,0 +1,2 @@
+robotframework~=6.0.1
+device-test-core @ git+https://github.com/reubenmiller/device-test-core.git@0.0.3#egg=device-test-core

@@ -1,0 +1,11 @@
+c8y_test_core/_version.py
+build/
+*.egg-info/
+.env
+__pycache__/
+.DS_Store
+Cumulocity/_version.py
+wordlist.txt
+results/
+.vscode/
+launch.json
