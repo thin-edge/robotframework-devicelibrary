@@ -17,6 +17,7 @@ from robot.api.deco import keyword, library
 from device_test_core.adapter import DeviceAdapter
 from device_test_core.docker.factory import DockerDeviceFactory
 from device_test_core.ssh.factory import SSHDeviceFactory
+from device_test_core.utils import generate_name
 
 
 log = logging.getLogger()
@@ -31,11 +32,9 @@ __version__ = "0.0.1"
 __author__ = "Reuben Miller"
 
 
-def generate_name(prefix: str = "STC") -> str:
+def generate_custom_name(prefix: str = "STC") -> str:
     """Generate a random name"""
-    # generator = RandomNameGenerator()
-    # return "-".join([prefix, generator.random_name()])
-    return "TODO"
+    return generate_name(prefix=prefix)
 
 
 @library(scope="GLOBAL", auto_keywords=False)
@@ -127,7 +126,8 @@ class DeviceLibrary:
         Returns:
             str: Random name
         """
-        return generate_name(prefix)
+
+        return generate_custom_name(prefix)
 
     @keyword("Setup Device")
     def start(self, skip_bootstrap: bool = False) -> str:
@@ -144,7 +144,7 @@ class DeviceLibrary:
         bootstrap_script=config.pop("bootstrap_script", self.__bootstrap_script)
 
         if adapter_type == "docker":
-            device_sn = generate_name()
+            device_sn = generate_custom_name()
 
             device = DockerDeviceFactory().create_device(
                 device_sn,
@@ -153,7 +153,7 @@ class DeviceLibrary:
                 **config,
             )
         elif adapter_type == "ssh":
-            device_sn = generate_name()
+            device_sn = generate_custom_name()
             device = SSHDeviceFactory().create_device(
                 device_sn,
                 env_file=".env",
