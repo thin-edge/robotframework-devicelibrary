@@ -361,6 +361,9 @@ class DeviceLibrary:
         """
         self.current.assert_command(f"! test -f '{path}'")
 
+    #
+    # Service Control
+    #
     @keyword("Start Service")
     def start_service(self, name: str, init_system: str = "systemd"):
         """Start a service
