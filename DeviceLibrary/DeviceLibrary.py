@@ -141,7 +141,7 @@ class DeviceLibrary:
         config = BuiltIn().get_variable_value("&{{{}_CONFIG}}".format(adapter_type.upper()), {}) or {}
         logging.info(f"Adapter config (type={adapter_type}): {config}")
 
-        bootstrap_script=config.pop("bootstrap_script", self.__bootstrap_script),
+        bootstrap_script=config.pop("bootstrap_script", self.__bootstrap_script)
 
         if adapter_type == "docker":
             device_sn = generate_name()
