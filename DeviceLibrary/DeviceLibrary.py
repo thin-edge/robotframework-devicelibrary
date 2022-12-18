@@ -401,10 +401,9 @@ class DeviceLibrary:
             path (str): File path
         """
         init_system = init_system.lower()
-        action = "start"
 
         if init_system == "systemd":
-            command = f"systemctl {action} {name}"
+            command = f"systemctl {action.lower()} {name}"
         elif init_system == "sysv":
             raise NotImplementedError("Currently only systemd is supported")
 
