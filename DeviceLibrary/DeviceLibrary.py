@@ -130,7 +130,7 @@ class DeviceLibrary:
         return generate_custom_name(prefix)
 
     @keyword("Setup Device")
-    def start(self, skip_bootstrap: bool = False) -> str:
+    def start(self, skip_bootstrap: bool = None) -> str:
         """Create a container device to use for testing
 
         Returns:
@@ -144,6 +144,12 @@ class DeviceLibrary:
             )
             or {}
         )
+
+        adapter_default_skip_bootstrap = config.pop("skip_bootstrap", False)
+        if skip_bootstrap is None:
+            # Read the default value from the configuration (if set)
+            # This allows the users to set different behaviour based on each adapter
+            skip_bootstrap = adapter_default_skip_bootstrap
 
         bootstrap_script = config.pop("bootstrap_script", self.__bootstrap_script)
 
