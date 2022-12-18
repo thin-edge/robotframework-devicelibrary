@@ -6,11 +6,9 @@ It currently support the creation of Docker devices only
 """
 
 import logging
-import time
 from typing import Any
 from datetime import datetime, timezone
 
-# from pytest_c8y.utils import RandomNameGenerator
 import dotenv
 from robot.libraries.BuiltIn import BuiltIn
 from robot.api.deco import keyword, library
@@ -75,6 +73,9 @@ class DeviceLibrary:
         # pylint: disable=invalid-name
         self.ROBOT_LIBRARY_LISTENER = self
 
+    #
+    # Hooks
+    #
     def start_test(self, _data: Any, _result: Any):
         """Hook which is triggered when the test starts
 
@@ -110,12 +111,9 @@ class DeviceLibrary:
         if not result.passed:
             logger.info("Test '%s' failed: %s", result.name, result.message)
 
-    @keyword("Wait For Device To Be Ready")
-    def wait_for_ready(self):
-        """Wait for the device to be ready"""
-        logger.info("Waiting for device to be ready")
-        time.sleep(2)
-
+    #
+    # Keywords / helpers
+    #
     @keyword("Get Random Name")
     def get_random_name(self, prefix: str = "TST") -> str:
         """Get random name
@@ -129,9 +127,13 @@ class DeviceLibrary:
 
         return generate_custom_name(prefix)
 
-    @keyword("Setup Device")
+    @keyword("Setup")
     def start(self, skip_bootstrap: bool = None) -> str:
-        """Create a container device to use for testing
+        """Create a device to use for testing
+
+        The actual device will depend on the configured adapter
+        from the library settings which controls what device
+        interaface is used, e.g. docker or ssh.
 
         Returns:
             str: Device serial number
@@ -185,11 +187,11 @@ class DeviceLibrary:
         self.current = device
         return device_sn
 
-    @keyword("Execute Command On Device")
+    @keyword("Execute Command")
     def execute_command(
         self, cmd: str, exp_exit_code: int = 0, log_output: bool = True
     ) -> str:
-        """Execute a device command
+        """Execute a command on the device
 
         Args:
             exp_exit_code (int, optional): Expected return code. Defaults to 0.
@@ -205,17 +207,35 @@ class DeviceLibrary:
         except (UnicodeDecodeError, AttributeError):
             return output
 
-    @keyword("Stop Device")
+    @keyword("Disconnect From Network")
+    def disconnect_network(self):
+        """Disconnect the device from the network.
+
+        This command only does something if the underlying adapter supports it.
+
+        For example, this is not possible with the SSH adapter.
+        """
+        self.current.disconnect_network()
+    
+    @keyword("Connect To Network")
+    def connect_network(self):
+        """Connect device to the network.
+        
+        This command only does something if the underlying adapter supports it.
+        For example, this is not possible with the SSH adapter.
+
+        """
+        self.current.connect_network()
+
     def teardown(self):
         """Stop and cleanup the device"""
         for name, device in self.devices.items():
             logger.info("Cleaning up device: %s", name)
             device.cleanup()
-            # self.destory_device(device)
 
-    @keyword("Get Device Logs")
+    @keyword("Get Logs")
     def get_logs(self, name: str = None):
-        """Get device log
+        """Get device logs
 
         Args:
             name (str, optional): name. Defaults to current device.
@@ -304,7 +324,7 @@ class DeviceLibrary:
     #
     # Files/folders
     #
-    @keyword("Directory Should Be Empty On Device")
+    @keyword("Directory Should Be Empty")
     def assert_directory_empty(self, path: str):
         """Check if a directory is empty
 
@@ -317,7 +337,7 @@ class DeviceLibrary:
         """.strip()
         )
 
-    @keyword("Directory Should Not Be Empty On Device")
+    @keyword("Directory Should Not Be Empty")
     def assert_directory_not_empty(self, path: str):
         """Check if a directory is empty
 
@@ -330,7 +350,7 @@ class DeviceLibrary:
         """.strip()
         )
 
-    @keyword("Directory Should Exist on Device")
+    @keyword("Directory Should Exist")
     def assert_directory(self, path: str):
         """Check if a directory exists
 
@@ -339,7 +359,7 @@ class DeviceLibrary:
         """
         self.current.assert_command(f"test -d '{path}'")
 
-    @keyword("Directory Should Not Exist on Device")
+    @keyword("Directory Should Not Exist")
     def assert_not_directory(self, path: str):
         """Check if a directory does not exists
 
@@ -348,7 +368,7 @@ class DeviceLibrary:
         """
         self.current.assert_command(f"! test -d '{path}'")
 
-    @keyword("File Should Exist on Device")
+    @keyword("File Should Exist")
     def assert_file_exists(self, path: str):
         """Check if a file exists
 
@@ -357,7 +377,7 @@ class DeviceLibrary:
         """
         self.current.assert_command(f"test -f '{path}'")
 
-    @keyword("File Should Not Exist on Device")
+    @keyword("File Should Not Exist")
     def assert_not_file_exists(self, path: str):
         """Check if a file does not exists
 
@@ -441,7 +461,7 @@ class DeviceLibrary:
         )
         return output.decode("utf8").strip()
 
-    @keyword("Process Should Be Running On Device")
+    @keyword("Process Should Be Running")
     def assert_process_exists(self, pattern: str):
         """Check if at least 1 process is running given a pattern
 
@@ -454,7 +474,7 @@ class DeviceLibrary:
         """.strip()
         )
 
-    @keyword("Process Should Not Be Running On Device")
+    @keyword("Process Should Not Be Running")
     def assert_process_not_exists(self, pattern: str):
         """Check that there are no processes matching a given pattern
 
@@ -464,9 +484,9 @@ class DeviceLibrary:
         count = self._count_processes(pattern)
         processes = self._find_processes(pattern)
         count = len(processes.splitlines())
-        assert count == 0, f"No processes should have matched. got {count}"
+        assert count == 0, f"No processes should have matched. got {count}\n\n{processes}"
 
-    @keyword("Should Match Processes on Device")
+    @keyword("Should Match Processes")
     def assert_process_count(
         self, pattern: str, minimum: int = 1, maximum: int = None
     ) -> int:
