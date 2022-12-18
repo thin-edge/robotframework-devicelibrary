@@ -138,10 +138,15 @@ class DeviceLibrary:
         """
         adapter_type = self.adapter
 
-        config = BuiltIn().get_variable_value("&{{{}_CONFIG}}".format(adapter_type.upper()), {}) or {}
+        config = (
+            BuiltIn().get_variable_value(
+                "&{{{}_CONFIG}}".format(adapter_type.upper()), {}
+            )
+            or {}
+        )
         logging.info(f"Adapter config (type={adapter_type}): {config}")
 
-        bootstrap_script=config.pop("bootstrap_script", self.__bootstrap_script)
+        bootstrap_script = config.pop("bootstrap_script", self.__bootstrap_script)
 
         if adapter_type == "docker":
             device_sn = generate_custom_name()
@@ -160,7 +165,9 @@ class DeviceLibrary:
                 **config,
             )
         else:
-            raise ValueError("Invalid adapter type. Only 'ssh' or 'docker' values are supported")
+            raise ValueError(
+                "Invalid adapter type. Only 'ssh' or 'docker' values are supported"
+            )
 
         # Install/Bootstrap tedge here after the container starts due to
         # install problems when systemd is not running (during the build stage)
@@ -295,9 +302,11 @@ class DeviceLibrary:
         Args:
             path (str): Directory path
         """
-        self.current.assert_command(f"""
+        self.current.assert_command(
+            f"""
             [ -d '{path}' ] && [ -z "$(ls -A '{path}')" ]
-        """.strip())
+        """.strip()
+        )
 
     @keyword("Directory Should Not Be Empty On Device")
     def assert_directory_not_empty(self, path: str):
@@ -306,9 +315,11 @@ class DeviceLibrary:
         Args:
             path (str): Directory path
         """
-        self.current.assert_command(f"""
+        self.current.assert_command(
+            f"""
             [ -d '{path}' ] && [ -n "$(ls -A '{path}')" ]
-        """.strip())
+        """.strip()
+        )
 
     @keyword("Directory Should Exist on Device")
     def assert_directory(self, path: str):
@@ -378,8 +389,10 @@ class DeviceLibrary:
         """Reload the services manager
         For systemd this would be a systemctl daemon-reload
         """
-        # self._control_service("reload", "", init_system=init_system)
-        raise NotImplementedError()
+        if init_system == "systemd":
+            return self.execute_command("systemctl daemon-reload")
+
+        raise NotImplementedError("Currently only systemd is supported")
 
     def _control_service(self, action: str, name: str, init_system: str = "systemd"):
         """Check if a file does not exists
@@ -392,26 +405,29 @@ class DeviceLibrary:
 
         if init_system == "systemd":
             command = f"systemctl {action} {name}"
-        elif init_system == "sytemv":
-            command = f"systemctl {action} {name}"
+        elif init_system == "sysv":
+            raise NotImplementedError("Currently only systemd is supported")
 
         self.current.assert_command(command)
-
 
     #
     # Processes
     #
     def _count_processes(self, pattern: str) -> int:
-        _, output = self.current.execute_command(f"""
+        _, output = self.current.execute_command(
+            f"""
             pgrep -fa '{pattern}' | grep -v "pgrep -fa" | wc -l
-        """.strip())
+        """.strip()
+        )
         count = output.decode("utf8").strip()
         return int(count)
-    
+
     def _find_processes(self, pattern: str) -> str:
-        _, output = self.current.execute_command(f"""
+        _, output = self.current.execute_command(
+            f"""
             pgrep -fa '{pattern}' | grep -v "pgrep -fa"
-        """.strip())
+        """.strip()
+        )
         return output.decode("utf8").strip()
 
     @keyword("Process Should Be Running On Device")
@@ -421,9 +437,11 @@ class DeviceLibrary:
         Args:
             pattern (str): Process pattern (passed to pgrep -fa '<pattern>')
         """
-        self.current.assert_command(f"""
+        self.current.assert_command(
+            f"""
             pgrep -fa '{pattern}' | grep -v "pgrep -fa"
-        """.strip())
+        """.strip()
+        )
 
     @keyword("Process Should Not Be Running On Device")
     def assert_process_not_exists(self, pattern: str):
