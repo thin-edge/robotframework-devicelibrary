@@ -144,7 +144,6 @@ class DeviceLibrary:
             )
             or {}
         )
-        logging.info(f"Adapter config (type={adapter_type}): {config}")
 
         bootstrap_script = config.pop("bootstrap_script", self.__bootstrap_script)
 
