@@ -192,9 +192,13 @@ class DeviceLibrary:
         Returns:
             str: _description_
         """
-        return self.current.assert_command(
+        output = self.current.assert_command(
             cmd, exp_exit_code=exp_exit_code, log_output=log_output
         )
+        try:
+            return output.decode("utf-8")
+        except (UnicodeDecodeError, AttributeError):
+            return output
 
     @keyword("Stop Device")
     def teardown(self):
