@@ -32,7 +32,7 @@ __version__ = "0.0.1"
 __author__ = "Reuben Miller"
 
 
-def generate_custom_name(prefix: str = "STC") -> str:
+def generate_custom_name(prefix: str = "TST") -> str:
     """Generate a random name"""
     return generate_name(prefix=prefix)
 
@@ -117,11 +117,11 @@ class DeviceLibrary:
         time.sleep(2)
 
     @keyword("Get Random Name")
-    def get_random_name(self, prefix: str = "STC") -> str:
+    def get_random_name(self, prefix: str = "TST") -> str:
         """Get random name
 
         Args:
-            prefix (str, optional): Name prefix. Defaults to "STC".
+            prefix (str, optional): Name prefix. Defaults to "TST".
 
         Returns:
             str: Random name
