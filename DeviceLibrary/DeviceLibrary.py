@@ -128,12 +128,16 @@ class DeviceLibrary:
         return generate_custom_name(prefix)
 
     @keyword("Setup")
-    def start(self, skip_bootstrap: bool = None) -> str:
+    def start(self, skip_bootstrap: bool = None, cleanup: bool = None) -> str:
         """Create a device to use for testing
 
         The actual device will depend on the configured adapter
         from the library settings which controls what device
         interaface is used, e.g. docker or ssh.
+
+        Args:
+            skip_bootstrap (bool, optional): Don't run the bootstrap script. Defaults to None
+            cleanup (bool, optional): Should the cleanup be run or not. Defaults to None
 
         Returns:
             str: Device serial number
@@ -145,6 +149,10 @@ class DeviceLibrary:
                 "&{{{}_CONFIG}}".format(adapter_type.upper()), {}
             )
             or {}
+        )
+
+        should_cleanup = (
+            cleanup if cleanup is not None else config.pop("skip_cleanup", False)
         )
 
         adapter_default_skip_bootstrap = config.pop("skip_bootstrap", False)
@@ -175,6 +183,9 @@ class DeviceLibrary:
             raise ValueError(
                 "Invalid adapter type. Only 'ssh' or 'docker' values are supported"
             )
+
+        # Set if the cleanup should be called or not
+        device.should_cleanup = should_cleanup
 
         # Install/Bootstrap tedge here after the container starts due to
         # install problems when systemd is not running (during the build stage)
@@ -216,11 +227,11 @@ class DeviceLibrary:
         For example, this is not possible with the SSH adapter.
         """
         self.current.disconnect_network()
-    
+
     @keyword("Connect To Network")
     def connect_network(self):
         """Connect device to the network.
-        
+
         This command only does something if the underlying adapter supports it.
         For example, this is not possible with the SSH adapter.
 
@@ -484,7 +495,9 @@ class DeviceLibrary:
         count = self._count_processes(pattern)
         processes = self._find_processes(pattern)
         count = len(processes.splitlines())
-        assert count == 0, f"No processes should have matched. got {count}\n\n{processes}"
+        assert (
+            count == 0
+        ), f"No processes should have matched. got {count}\n\n{processes}"
 
     @keyword("Should Match Processes")
     def assert_process_count(
