@@ -218,6 +218,15 @@ class DeviceLibrary:
         except (UnicodeDecodeError, AttributeError):
             return output
 
+    @keyword("Get IP Address")
+    def get_ipaddress(self) -> str:
+        """Return the ip address of the current device
+
+        Returns:
+            str: IP address. An empty string is returned if it does not have an ip address
+        """
+        return self.current.get_ipaddress() or ""
+
     @keyword("Disconnect From Network")
     def disconnect_network(self):
         """Disconnect the device from the network.
