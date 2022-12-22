@@ -1,6 +1,7 @@
 """DeviceLibrary for Robot Framework"""
 from importlib.metadata import version, PackageNotFoundError
 from .DeviceLibrary import DeviceLibrary
+from .DeviceLibrary import DeviceAdapter
 
 try:
     __version__ = version("DeviceLibrary")
