@@ -198,6 +198,14 @@ class DeviceLibrary:
         self.current = device
         return device_sn
 
+    @keyword("Set Device Context")
+    def set_current(self, name: str):
+        """Set the device context which controls the device the other
+        keywords send the commands to
+        """
+        assert name in self.devices, f"Name not found existing device adapters: {list(self.devices.keys())}"
+        self.current = self.devices.get(name, self.current)
+
     @keyword("Execute Command")
     def execute_command(
         self, cmd: str, exp_exit_code: int = 0, log_output: bool = True
