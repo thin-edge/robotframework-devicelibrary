@@ -353,17 +353,29 @@ class DeviceLibrary:
     # Files/folders
     #
     @keyword("Directory Should Be Empty")
-    def assert_directory_empty(self, path: str):
-        """Check if a directory is empty
+    def assert_directory_empty(self, path: str, must_exist: bool = False):
+        """Check if a directory is empty.
+
+        You can define if the check should fail if the folder does not exist or not.
 
         Args:
             path (str): Directory path
+            must_exist(bool, optional): Fail if the directory does not exist.
+                Defaults to False.
         """
-        self.current.assert_command(
-            f"""
-            [ -d '{path}' ] && [ -z "$(ls -A '{path}')" ]
-        """.strip()
-        )
+        if must_exist:
+            self.current.assert_command(
+                f"""
+                [ -d '{path}' ] && [ -z "$(ls -A '{path}')" ]
+                """.strip()
+            )
+        else:
+            # Don't fail if the folder does not exist, just count the contents
+            self.current.assert_command(
+                f"""
+                [ -z "$(ls -A '{path}' 2>/dev/null || true)" ]
+                """.strip()
+            )
 
     @keyword("Directory Should Not Be Empty")
     def assert_directory_not_empty(self, path: str):
