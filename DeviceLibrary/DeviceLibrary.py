@@ -8,8 +8,10 @@ It currently support the creation of Docker devices only
 import logging
 from typing import Any
 from datetime import datetime, timezone
+import re
 
 import dotenv
+from unidecode import unidecode
 from robot.libraries.BuiltIn import BuiltIn
 from robot.api.deco import keyword, library
 from device_test_core.adapter import DeviceAdapter
@@ -33,6 +35,18 @@ __author__ = "Reuben Miller"
 def generate_custom_name(prefix: str = "TST") -> str:
     """Generate a random name"""
     return generate_name(prefix=prefix)
+
+
+def normalize_container_name(name: str) -> str:
+    """Normalize the container name so it conforms
+    with the allowed characters
+
+    Accents are converted to the non-accented variant, and
+    then any other character not matching [^a-zA-Z0-9_.-] is
+    removed.
+    """
+    name = unidecode(name)
+    return re.sub("[^a-zA-Z0-9_.-]", "", name)
 
 
 @library(scope="GLOBAL", auto_keywords=False)
@@ -164,7 +178,7 @@ class DeviceLibrary:
         bootstrap_script = config.pop("bootstrap_script", self.__bootstrap_script)
 
         if adapter_type == "docker":
-            device_sn = generate_custom_name()
+            device_sn = normalize_container_name(generate_custom_name())
 
             device = DockerDeviceFactory().create_device(
                 device_sn,
@@ -203,7 +217,9 @@ class DeviceLibrary:
         """Set the device context which controls the device the other
         keywords send the commands to
         """
-        assert name in self.devices, f"Name not found existing device adapters: {list(self.devices.keys())}"
+        assert (
+            name in self.devices
+        ), f"Name not found existing device adapters: {list(self.devices.keys())}"
         self.current = self.devices.get(name, self.current)
 
     @keyword("Execute Command")
