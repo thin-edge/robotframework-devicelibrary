@@ -166,7 +166,7 @@ class DeviceLibrary:
         )
 
         should_cleanup = (
-            cleanup if cleanup is not None else config.pop("skip_cleanup", False)
+            cleanup if cleanup is not None else not config.pop("skip_cleanup", False)
         )
 
         adapter_default_skip_bootstrap = config.pop("skip_bootstrap", False)
