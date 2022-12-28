@@ -418,6 +418,18 @@ class DeviceLibrary:
 
         return output.decode("utf8").splitlines()
 
+    @keyword("Directory Should Not Have Sub Directories")
+    def assert_directories_count(self, path: str, must_exist: bool = False):
+        """Check if directory has no sub directories
+
+        Args:
+            path (str): Directory path
+            must_exist (bool, optional): Should an error be thrown if the directory
+                does not exist. Defaults to False.
+        """
+        dirs = self.get_directories_in_directory(path, must_exist)
+        assert len(dirs) == 0
+
     @keyword("Directory Should Not Be Empty")
     def assert_directory_not_empty(self, path: str):
         """Check if a directory is empty
