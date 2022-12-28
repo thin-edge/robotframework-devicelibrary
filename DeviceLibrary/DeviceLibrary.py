@@ -141,6 +141,11 @@ class DeviceLibrary:
 
         return generate_custom_name(prefix)
 
+    @keyword("Get Test Start Time")
+    def get_test_start_time(self) -> datetime:
+        """Get the time that the test was started"""
+        return self.test_start_time
+
     @keyword("Setup")
     def start(self, skip_bootstrap: bool = None, cleanup: bool = None) -> str:
         """Create a device to use for testing
