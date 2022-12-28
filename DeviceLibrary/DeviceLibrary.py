@@ -6,7 +6,7 @@ It currently support the creation of Docker devices only
 """
 
 import logging
-from typing import Any
+from typing import Any, List
 from datetime import datetime, timezone
 import re
 
@@ -397,6 +397,26 @@ class DeviceLibrary:
                 [ -z "$(ls -A '{path}' 2>/dev/null || true)" ]
                 """.strip()
             )
+
+    @keyword("List Directories in Directory")
+    def get_directories_in_directory(
+        self, path: str, must_exist: bool = False
+    ) -> List[str]:
+        """List the directories in a given directory
+
+        Returns:
+            List[str]: List of directories
+        """
+        if must_exist:
+            output = self.current.assert_command(
+                f"find '{path}' -maxdepth 1 -mindepth 1 -type d 2>/dev/null"
+            )
+        else:
+            output = self.current.assert_command(
+                f"find '{path}' -maxdepth 1 -mindepth 1 -type d || true"
+            )
+
+        return output.decode("utf8").splitlines()
 
     @keyword("Directory Should Not Be Empty")
     def assert_directory_not_empty(self, path: str):
