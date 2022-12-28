@@ -409,11 +409,11 @@ class DeviceLibrary:
         """
         if must_exist:
             output = self.current.assert_command(
-                f"find '{path}' -maxdepth 1 -mindepth 1 -type d 2>/dev/null"
+                f"find '{path}' -maxdepth 1 -mindepth 1 -type d"
             )
         else:
             output = self.current.assert_command(
-                f"find '{path}' -maxdepth 1 -mindepth 1 -type d || true"
+                f"find '{path}' -maxdepth 1 -mindepth 1 -type d 2>/dev/null || true"
             )
 
         return output.decode("utf8").splitlines()
