@@ -229,16 +229,24 @@ class DeviceLibrary:
 
     @keyword("Execute Command")
     def execute_command(
-        self, cmd: str, exp_exit_code: int = 0, log_output: bool = True
+        self,
+        cmd: str,
+        exp_exit_code: int = 0,
+        ignore_exit_code: bool = False,
+        log_output: bool = True,
     ) -> str:
         """Execute a command on the device
 
         Args:
             exp_exit_code (int, optional): Expected return code. Defaults to 0.
+            ignore_exit_code (bool, optional): Ignore the return code. Defaults to False.
 
         Returns:
             str: _description_
         """
+        if ignore_exit_code:
+            exp_exit_code = None
+
         output = self.current.assert_command(
             cmd, exp_exit_code=exp_exit_code, log_output=log_output
         )
