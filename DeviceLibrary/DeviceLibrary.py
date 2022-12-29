@@ -239,6 +239,7 @@ class DeviceLibrary:
         exp_exit_code: int = 0,
         ignore_exit_code: bool = False,
         log_output: bool = True,
+        **kwargs,
     ) -> str:
         """Execute a command on the device
 
