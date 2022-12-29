@@ -303,8 +303,11 @@ class DeviceLibrary:
     def teardown(self):
         """Stop and cleanup the device"""
         for name, device in self.devices.items():
-            logger.info("Cleaning up device: %s", name)
-            device.cleanup()
+            try:
+                logger.info("Cleaning up device: %s", name)
+                device.cleanup()
+            except Exception as ex:
+                logger.warning("Error during device cleanup. %s", ex)
 
     @keyword("Get Logs")
     def get_logs(self, name: str = None):
