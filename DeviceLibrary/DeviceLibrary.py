@@ -254,15 +254,15 @@ class DeviceLibrary:
             exp_exit_code = None
 
         output = self.current.assert_command(
-            cmd, exp_exit_code=exp_exit_code, log_output=log_output
+            cmd,
+            exp_exit_code=exp_exit_code,
+            log_output=log_output,
+            **kwargs,
         )
         try:
             return output.decode("utf-8")
         except (UnicodeDecodeError, AttributeError):
             return output
-    
-    # @keyword("Wait For Command")
-    
 
     @keyword("Get IP Address")
     def get_ipaddress(self) -> str:
