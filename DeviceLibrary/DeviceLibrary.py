@@ -113,6 +113,7 @@ class DeviceLibrary:
         """
         logger.info("Suite %s (%s) ending", result.name, result.message)
         self.teardown()
+        self.devices.clear()
 
     def end_test(self, _data: Any, result: Any):
         """End test hook which is called by Robot Framework
