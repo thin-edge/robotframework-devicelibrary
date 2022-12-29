@@ -16,6 +16,7 @@ from robot.libraries.BuiltIn import BuiltIn
 from robot.api.deco import keyword, library
 from device_test_core.adapter import DeviceAdapter
 from device_test_core.docker.factory import DockerDeviceFactory
+from device_test_core.retry import configure_retry_on_members
 from device_test_core.ssh.factory import SSHDeviceFactory
 from device_test_core.utils import generate_name
 
@@ -214,6 +215,10 @@ class DeviceLibrary:
             device.assert_command(bootstrap_script, log_output=True, shell=True)
 
         self.devices[device_sn] = device
+
+        # TODO: Add retrier
+        configure_retry_on_members(device, "^assert_command")
+
         self.current = device
         return device_sn
 
@@ -254,6 +259,9 @@ class DeviceLibrary:
             return output.decode("utf-8")
         except (UnicodeDecodeError, AttributeError):
             return output
+    
+    # @keyword("Wait For Command")
+    
 
     @keyword("Get IP Address")
     def get_ipaddress(self) -> str:
