@@ -239,6 +239,7 @@ class DeviceLibrary:
         exp_exit_code: int = 0,
         ignore_exit_code: bool = False,
         log_output: bool = True,
+        strip: bool = False,
         **kwargs,
     ) -> str:
         """Execute a command on the device
@@ -246,6 +247,7 @@ class DeviceLibrary:
         Args:
             exp_exit_code (int, optional): Expected return code. Defaults to 0.
             ignore_exit_code (bool, optional): Ignore the return code. Defaults to False.
+            strip (bool, optional): Strip whitespace from the output. Defaults to False.
 
         Returns:
             str: _description_
@@ -260,8 +262,13 @@ class DeviceLibrary:
             **kwargs,
         )
         try:
-            return output.decode("utf-8")
+            output_text = output.decode("utf-8")
+            if strip:
+                return output_text.strip()
+            return output_text
         except (UnicodeDecodeError, AttributeError):
+            if strip:
+                return output.strip()
             return output
 
     @keyword("Get IP Address")
