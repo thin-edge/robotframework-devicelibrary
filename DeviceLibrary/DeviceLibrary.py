@@ -149,7 +149,9 @@ class DeviceLibrary:
         return self.test_start_time
 
     @keyword("Setup")
-    def start(self, skip_bootstrap: bool = None, cleanup: bool = None) -> str:
+    def setup(
+        self, skip_bootstrap: bool = None, cleanup: bool = None, adapter: str = None
+    ) -> str:
         """Create a device to use for testing
 
         The actual device will depend on the configured adapter
@@ -159,11 +161,12 @@ class DeviceLibrary:
         Args:
             skip_bootstrap (bool, optional): Don't run the bootstrap script. Defaults to None
             cleanup (bool, optional): Should the cleanup be run or not. Defaults to None
+            adapter (str, optional): Type of adapter to use, e.g. ssh, docker etc. Defaults to None
 
         Returns:
             str: Device serial number
         """
-        adapter_type = self.adapter
+        adapter_type = adapter or self.adapter
 
         config = (
             BuiltIn().get_variable_value(
