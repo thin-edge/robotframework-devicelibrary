@@ -198,9 +198,13 @@ class DeviceLibrary:
             )
         elif adapter_type == "ssh":
             device_sn = generate_custom_name()
+            env = {
+                "DEVICE_ID": device_sn,
+            }
             device = SSHDeviceFactory().create_device(
                 device_sn,
                 env_file=".env",
+                env=env,
                 **config,
             )
             if os.path.exists(bootstrap_script):
