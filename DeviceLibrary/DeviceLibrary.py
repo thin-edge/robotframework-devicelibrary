@@ -9,6 +9,8 @@ import logging
 from typing import Any, List
 from datetime import datetime, timezone
 import re
+import os
+from pathlib import Path
 
 import dotenv
 from unidecode import unidecode
@@ -19,9 +21,6 @@ from device_test_core.docker.factory import DockerDeviceFactory
 from device_test_core.retry import configure_retry_on_members
 from device_test_core.ssh.factory import SSHDeviceFactory
 from device_test_core.utils import generate_name
-
-
-log = logging.getLogger()
 
 
 logging.basicConfig(
@@ -59,7 +58,7 @@ class DeviceLibrary:
     # Default parameter settings
     DEFAULT_IMAGE = "debian-systemd"
 
-    DEFAULT_BOOTSTRAP_SCRIPT = "/setup/bootstrap.sh"
+    DEFAULT_BOOTSTRAP_SCRIPT = "./bootstrap.sh"
 
     # Default adapter type
     DEFAULT_ADAPTER = "docker"
@@ -203,6 +202,14 @@ class DeviceLibrary:
                 env_file=".env",
                 **config,
             )
+            if os.path.exists(bootstrap_script):
+                # Copy file to device even when not doing bootstrapping to
+                # allow the user to manually trigger the bootstrap later
+                logger.info("Transferring %s script to device", bootstrap_script)
+                self.transfer_to_device(bootstrap_script, ".")
+                bootstrap_script = os.path.join(".", Path(bootstrap_script).name)
+            else:
+                skip_bootstrap = True
         else:
             raise ValueError(
                 "Invalid adapter type. Only 'ssh' or 'docker' values are supported"
