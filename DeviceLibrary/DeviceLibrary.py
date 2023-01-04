@@ -207,7 +207,7 @@ class DeviceLibrary:
                 # Copy file to device even when not doing bootstrapping to
                 # allow the user to manually trigger the bootstrap later
                 logger.info("Transferring %s script to device", bootstrap_script)
-                self.transfer_to_device(bootstrap_script, ".")
+                device.copy_to(bootstrap_script, ".")
                 bootstrap_script = os.path.join(".", Path(bootstrap_script).name)
             else:
                 skip_bootstrap = True
