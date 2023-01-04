@@ -16,6 +16,7 @@ import dotenv
 from unidecode import unidecode
 from robot.libraries.BuiltIn import BuiltIn
 from robot.api.deco import keyword, library
+from robot.utils import is_truthy
 from device_test_core.adapter import DeviceAdapter
 from device_test_core.docker.factory import DockerDeviceFactory
 from device_test_core.retry import configure_retry_on_members
@@ -174,11 +175,11 @@ class DeviceLibrary:
             or {}
         )
 
-        should_cleanup = (
+        should_cleanup = is_truthy(
             cleanup if cleanup is not None else not config.pop("skip_cleanup", False)
         )
 
-        adapter_default_skip_bootstrap = config.pop("skip_bootstrap", False)
+        adapter_default_skip_bootstrap = is_truthy(config.pop("skip_bootstrap", False))
         if skip_bootstrap is None:
             # Read the default value from the configuration (if set)
             # This allows the users to set different behaviour based on each adapter
