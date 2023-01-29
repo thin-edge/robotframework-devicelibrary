@@ -50,7 +50,7 @@ def normalize_container_name(name: str) -> str:
     return re.sub("[^a-zA-Z0-9_.-]", "", name)
 
 
-@library(scope="GLOBAL", auto_keywords=False)
+@library(scope="SUITE", auto_keywords=False)
 class DeviceLibrary:
     """Device Library"""
 
@@ -71,11 +71,13 @@ class DeviceLibrary:
     # Constructor
     def __init__(
         self,
+        adapter: str = None,
         image: str = DEFAULT_IMAGE,
         bootstrap_script: str = DEFAULT_BOOTSTRAP_SCRIPT,
     ):
         self.devices = {}
         self.__image = image
+        self.adapter = adapter
         self.__bootstrap_script = bootstrap_script
         self.current: DeviceAdapter = None
         self.test_start_time = None
@@ -87,7 +89,7 @@ class DeviceLibrary:
         self.ROBOT_LIBRARY_LISTENER = self
 
     def _get_adapter(self) -> str:
-        return BuiltIn().get_variable_value(r"${DEVICE_ADAPTER}") or self.DEFAULT_ADAPTER
+        return self.adapter or BuiltIn().get_variable_value(r"${DEVICE_ADAPTER}") or self.DEFAULT_ADAPTER
 
     #
     # Hooks
