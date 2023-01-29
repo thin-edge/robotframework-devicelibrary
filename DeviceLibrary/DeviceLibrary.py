@@ -77,7 +77,7 @@ class DeviceLibrary:
     ):
         self.devices = {}
         self.__image = image
-        self.adapter = adapter or BuiltIn().get_variable_value("${{DEVICE_ADAPTER}}") or self.DEFAULT_ADAPTER
+        self.adapter = adapter
         self.__bootstrap_script = bootstrap_script
         self.current: DeviceAdapter = None
         self.test_start_time = None
@@ -87,6 +87,9 @@ class DeviceLibrary:
 
         # pylint: disable=invalid-name
         self.ROBOT_LIBRARY_LISTENER = self
+
+    def _get_adapter(self) -> str:
+        return self.adapter or BuiltIn().get_variable_value("${{DEVICE_ADAPTER}}") or self.DEFAULT_ADAPTER
 
     #
     # Hooks
@@ -156,7 +159,7 @@ class DeviceLibrary:
 
         The actual device will depend on the configured adapter
         from the library settings which controls what device
-        interaface is used, e.g. docker or ssh.
+        interface is used, e.g. docker or ssh.
 
         Args:
             skip_bootstrap (bool, optional): Don't run the bootstrap script. Defaults to None
@@ -166,7 +169,7 @@ class DeviceLibrary:
         Returns:
             str: Device serial number
         """
-        adapter_type = adapter or self.adapter
+        adapter_type = adapter or self._get_adapter()
 
         config = (
             BuiltIn().get_variable_value(
