@@ -89,7 +89,7 @@ class DeviceLibrary:
         self.ROBOT_LIBRARY_LISTENER = self
 
     def _get_adapter(self) -> str:
-        return self.adapter or BuiltIn().get_variable_value("${{DEVICE_ADAPTER}}") or self.DEFAULT_ADAPTER
+        return self.adapter or BuiltIn().get_variable_value(r"${DEVICE_ADAPTER}") or self.DEFAULT_ADAPTER
 
     #
     # Hooks
