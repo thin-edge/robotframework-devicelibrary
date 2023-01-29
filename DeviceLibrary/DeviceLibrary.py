@@ -72,12 +72,12 @@ class DeviceLibrary:
     def __init__(
         self,
         image: str = DEFAULT_IMAGE,
-        adapter: str = DEFAULT_ADAPTER,
+        adapter: str = None,
         bootstrap_script: str = DEFAULT_BOOTSTRAP_SCRIPT,
     ):
         self.devices = {}
         self.__image = image
-        self.adapter = adapter
+        self.adapter = adapter or BuiltIn().get_variable_value("${{DEVICE_ADAPTER}}") or self.DEFAULT_ADAPTER
         self.__bootstrap_script = bootstrap_script
         self.current: DeviceAdapter = None
         self.test_start_time = None
