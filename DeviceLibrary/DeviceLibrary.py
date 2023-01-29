@@ -222,20 +222,17 @@ class DeviceLibrary:
 
         # Set if the cleanup should be called or not
         device.should_cleanup = should_cleanup
+        self.devices[device_sn] = device
+        configure_retry_on_members(device, "^assert_command")
+        self.current = device
 
-        # Install/Bootstrap tedge here after the container starts due to
+        # Install/Bootstrap device here after the container starts due to
         # install problems when systemd is not running (during the build stage)
         # But it also allows us to possibly customize which version is installed
         # for the test
         if not skip_bootstrap and bootstrap_script:
             device.assert_command(bootstrap_script, log_output=True, shell=True)
 
-        self.devices[device_sn] = device
-
-        # TODO: Add retrier
-        configure_retry_on_members(device, "^assert_command")
-
-        self.current = device
         return device_sn
 
     @keyword("Set Device Context")
