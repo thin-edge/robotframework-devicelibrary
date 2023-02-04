@@ -21,6 +21,7 @@ from device_test_core.adapter import DeviceAdapter
 from device_test_core.docker.factory import DockerDeviceFactory
 from device_test_core.retry import configure_retry_on_members
 from device_test_core.ssh.factory import SSHDeviceFactory
+from device_test_core.local.factory import LocalDeviceFactory
 from device_test_core.utils import generate_name
 
 
@@ -227,6 +228,25 @@ class DeviceLibrary:
                 "DEVICE_ID": device_sn,
             }
             device = SSHDeviceFactory().create_device(
+                device_sn,
+                env_file=".env",
+                env=env,
+                **config,
+            )
+            if os.path.exists(bootstrap_script):
+                # Copy file to device even when not doing bootstrapping to
+                # allow the user to manually trigger the bootstrap later
+                logger.info("Transferring %s script to device", bootstrap_script)
+                device.copy_to(bootstrap_script, ".")
+                bootstrap_script = os.path.join(".", Path(bootstrap_script).name)
+            else:
+                skip_bootstrap = True
+        elif adapter_type == "local":
+            device_sn = generate_custom_name()
+            env = {
+                "DEVICE_ID": device_sn,
+            }
+            device = LocalDeviceFactory().create_device(
                 device_sn,
                 env_file=".env",
                 env=env,
