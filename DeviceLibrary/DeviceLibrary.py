@@ -81,6 +81,7 @@ class DeviceLibrary:
         self.__bootstrap_script = bootstrap_script
         self.current: DeviceAdapter = None
         self.test_start_time = None
+        self.suite_start_time = None
 
         # load any settings from dotenv file
         dotenv.load_dotenv(".env")
@@ -89,11 +90,27 @@ class DeviceLibrary:
         self.ROBOT_LIBRARY_LISTENER = self
 
     def _get_adapter(self) -> str:
-        return self.adapter or BuiltIn().get_variable_value(r"${DEVICE_ADAPTER}") or self.DEFAULT_ADAPTER
+        return (
+            self.adapter
+            or BuiltIn().get_variable_value(r"${DEVICE_ADAPTER}")
+            or self.DEFAULT_ADAPTER
+        )
 
     #
     # Hooks
     #
+    def start_suite(self, _data: Any, _result: Any):
+        """Hook which is triggered when the suite starts
+
+        Store information about the running of the suite
+        such as the time the suite started.
+
+        Args:
+            _data (Any): Test case
+            _result (Any): Test case results
+        """
+        self.suite_start_time = datetime.now(tz=timezone.utc)
+
     def start_test(self, _data: Any, _result: Any):
         """Hook which is triggered when the test starts
 
@@ -150,6 +167,11 @@ class DeviceLibrary:
     def get_test_start_time(self) -> datetime:
         """Get the time that the test was started"""
         return self.test_start_time
+
+    @keyword("Get Suite Start Time")
+    def get_suite_start_time(self) -> datetime:
+        """Get the time that the suite was started"""
+        return self.suite_start_time
 
     @keyword("Setup")
     def setup(
