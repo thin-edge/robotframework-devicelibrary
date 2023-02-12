@@ -7,13 +7,13 @@ Robot Framework Library for creating and interacting with devices using various 
 1. Install via pip
 
     ```sh
-    pip install robotframework-devicelibrary[all]  git+https://github.com/reubenmiller/robotframework-devicelibrary.git@0.24.1
+    pip install robotframework-devicelibrary[all]  git+https://github.com/reubenmiller/robotframework-devicelibrary.git@0.24.2
     ```
 
     Or add it to your `requirements.txt` file
 
     ```sh
-    robotframework-devicelibrary[all] @ git+https://github.com/reubenmiller/robotframework-devicelibrary.git@0.24.1
+    robotframework-devicelibrary[all] @ git+https://github.com/reubenmiller/robotframework-devicelibrary.git@0.24.2
     ```
 
     Then install it via
