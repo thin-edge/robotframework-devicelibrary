@@ -18,11 +18,22 @@ from robot.libraries.BuiltIn import BuiltIn
 from robot.api.deco import keyword, library
 from robot.utils import is_truthy
 from device_test_core.adapter import DeviceAdapter
-from device_test_core.docker.factory import DockerDeviceFactory
+
 from device_test_core.retry import configure_retry_on_members
-from device_test_core.ssh.factory import SSHDeviceFactory
-from device_test_core.local.factory import LocalDeviceFactory
 from device_test_core.utils import generate_name
+
+
+def raise_adapter_error(adapter: str):
+    """
+    Raise an adapter error and hint on what depencency is missing
+
+    Args:
+        adapter (str): adapter type, e.g. ssh, docker, local
+    """
+    raise ValueError(
+        f"Missing device adapter '{adapter}'. "
+        f"please install robotframework-devicelibrary[{adapter}]"
+    ) from None
 
 
 logging.basicConfig(
@@ -214,6 +225,11 @@ class DeviceLibrary:
         bootstrap_script = config.pop("bootstrap_script", self.__bootstrap_script)
 
         if adapter_type == "docker":
+            try:
+                from device_test_core.docker.factory import DockerDeviceFactory
+            except (ImportError, AttributeError):
+                raise_adapter_error(adapter_type)
+
             device_sn = normalize_container_name(generate_custom_name())
 
             device = DockerDeviceFactory().create_device(
@@ -223,6 +239,11 @@ class DeviceLibrary:
                 **config,
             )
         elif adapter_type == "ssh":
+            try:
+                from device_test_core.ssh.factory import SSHDeviceFactory
+            except (ImportError, AttributeError):
+                raise_adapter_error(adapter_type)
+
             device_sn = generate_custom_name()
             env = {
                 "DEVICE_ID": device_sn,
@@ -242,6 +263,11 @@ class DeviceLibrary:
             else:
                 skip_bootstrap = True
         elif adapter_type == "local":
+            try:
+                from device_test_core.local.factory import LocalDeviceFactory
+            except (ImportError, AttributeError):
+                raise_adapter_error(adapter_type)
+
             device_sn = generate_custom_name()
             env = {
                 "DEVICE_ID": device_sn,

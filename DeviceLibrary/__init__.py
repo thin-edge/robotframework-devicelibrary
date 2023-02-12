@@ -1,5 +1,6 @@
 """DeviceLibrary for Robot Framework"""
 import sys
+
 if sys.version_info < (3, 8):
     from importlib_metadata import version, PackageNotFoundError
 else:
