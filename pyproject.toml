@@ -9,12 +9,10 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools_scm]
 write_to = "DeviceLibrary/_version.py"
 
-[tool.setuptools.dynamic]
-readme = {file = ["README.md"]}
-
 [project]
 name = "robotframework-devicelibrary"
 description = "Robot Framework library for interfacing with Devices"
+readme = "README.md"
 requires-python = ">=3.7"
 keywords = ["testing"]
 license = {text = "MIT"}
