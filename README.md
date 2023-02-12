@@ -1,19 +1,19 @@
 # robotframework-devicelibrary
 
-Robot Framework Library for Cumulocity
+Robot Framework Library for creating and interacting with devices using various adapters such as ssh, docker and local devices using the same interface.
 
 # Using it
 
 1. Install via pip
 
     ```sh
-    pip install git+https://github.com/reubenmiller/robotframework-devicelibrary.git@0.0.1
+    pip install robotframework-devicelibrary[all]  git+https://github.com/reubenmiller/robotframework-devicelibrary.git@0.24.0
     ```
 
     Or add it to your `requirements.txt` file
 
     ```sh
-    robotframework-devicelibrary @ git+https://github.com/reubenmiller/robotframework-devicelibrary.git@0.0.1
+    robotframework-devicelibrary[all] @ git+https://github.com/reubenmiller/robotframework-devicelibrary.git@0.24.0
     ```
 
     Then install it via
@@ -25,9 +25,6 @@ Robot Framework Library for Cumulocity
 2. Create a `.env` file with the following environment variables (which will be the secrets)
 
     ```sh
-    # Only needed if you are using colima
-    DOCKER_HOST="unix:///Users/myuser/.colima/docker.sock"
-
     # SSH config (which device should be tested when using ssh)
     SSH_CONFIG_HOSTNAME=
     SSH_CONFIG_USERNAME=
@@ -75,3 +72,11 @@ You can generate the docs yourself using:
 ```sh
 libdoc DeviceLibrary/DeviceLibrary.py show > docs/DeviceLibrary.rst
 ```
+
+Or you can create the html docs using:
+
+```sh
+libdoc ./DeviceLibrary/DeviceLibrary.py docs/DeviceLibrary.html
+```
+
+Then open the [docs/DeviceLibrary.html](docs/DeviceLibrary.html) file in your local web browser.
