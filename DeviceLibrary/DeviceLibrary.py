@@ -6,7 +6,7 @@ It currently support the creation of Docker devices only
 """
 
 import logging
-from typing import Any, List
+from typing import Any, List, Union
 from datetime import datetime, timezone
 import re
 import os
@@ -320,7 +320,7 @@ class DeviceLibrary:
     def execute_command(
         self,
         cmd: str,
-        exp_exit_code: int = 0,
+        exp_exit_code: Union[int,str] = 0,
         ignore_exit_code: bool = False,
         log_output: bool = True,
         strip: bool = False,
@@ -329,7 +329,8 @@ class DeviceLibrary:
         """Execute a command on the device
 
         Args:
-            exp_exit_code (int, optional): Expected return code. Defaults to 0.
+            exp_exit_code (Union[int,str], optional): Expected return code. Defaults to 0.
+                Use '!0' if you want to match against a non-zero exit code.
             ignore_exit_code (bool, optional): Ignore the return code. Defaults to False.
             strip (bool, optional): Strip whitespace from the output. Defaults to False.
 
@@ -598,7 +599,8 @@ class DeviceLibrary:
         """Start a service
 
         Args:
-            path (str): File path
+            name (str): Name of the service
+            init_system (str): Init. system. Defaults to 'systemd'
         """
         self._control_service("start", name, init_system=init_system)
 
@@ -607,16 +609,58 @@ class DeviceLibrary:
         """Stop a service
 
         Args:
-            path (str): File path
+            name (str): Name of the service
+            init_system (str): Init. system. Defaults to 'systemd'
         """
         self._control_service("stop", name, init_system=init_system)
+
+    @keyword("Service Should Be Enabled")
+    def service_enabled(self, name: str, init_system: str = "systemd"):
+        """Assert that the service is enabled (to start on device boot)
+
+        Args:
+            name (str): Name of the service
+            init_system (str): Init. system. Defaults to 'systemd'
+        """
+        self._control_service("is-enabled", name, init_system=init_system)
+
+    @keyword("Service Should Be Disabled")
+    def service_disabled(self, name: str, init_system: str = "systemd"):
+        """Assert that the service is enabled (to start on device boot)
+
+        Args:
+            name (str): Name of the service
+            init_system (str): Init. system. Defaults to 'systemd'
+        """
+        self._control_service("is-enabled", name, exp_exit_code="!0", init_system=init_system)
+
+    @keyword("Service Should Be Running")
+    def service_running(self, name: str, init_system: str = "systemd"):
+        """Assert that the service is running
+
+        Args:
+            name (str): Name of the service
+            init_system (str): Init. system. Defaults to 'systemd'
+        """
+        self._control_service("is-active", name, init_system=init_system)
+
+    @keyword("Service Should Be Stopped")
+    def service_stopping(self, name: str, init_system: str = "systemd"):
+        """Assert that the service is stopped
+
+        Args:
+            name (str): Name of the service
+            init_system (str): Init. system. Defaults to 'systemd'
+        """
+        self._control_service("is-active", name, exp_exit_code="!0", init_system=init_system)
 
     @keyword("Restart Service")
     def restart_service(self, name: str, init_system: str = "systemd"):
         """Restart a service
 
         Args:
-            path (str): File path
+            name (str): Name of the service
+            init_system (str): Init. system. Defaults to 'systemd'
         """
         self._control_service("restart", name, init_system=init_system)
 
@@ -630,11 +674,15 @@ class DeviceLibrary:
 
         raise NotImplementedError("Currently only systemd is supported")
 
-    def _control_service(self, action: str, name: str, init_system: str = "systemd"):
+    def _control_service(self, action: str, name: str, exp_exit_code: Union[int,str] = 0, init_system: str = "systemd"):
         """Check if a file does not exists
 
         Args:
-            path (str): File path
+            name (str): Name of the service
+            exp_exit_code (Union[int,str], optional): Expected exit code. Defaults to 0. Use '!0' if you want
+                to match against a non-zero exit code.
+            init_system (str): Init. system. Defaults to 'systemd'
+
         """
         init_system = init_system.lower()
 
