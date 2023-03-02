@@ -1,5 +1,5 @@
 from setuptools import setup
 
 setup(
-    packages=['DeviceLibrary'],
+    packages=["DeviceLibrary"],
 )

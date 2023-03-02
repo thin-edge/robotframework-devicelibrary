@@ -337,7 +337,7 @@ class DeviceLibrary:
     def execute_command(
         self,
         cmd: str,
-        exp_exit_code: Union[int,str] = 0,
+        exp_exit_code: Union[int, str] = 0,
         ignore_exit_code: bool = False,
         log_output: bool = True,
         strip: bool = False,
@@ -649,7 +649,9 @@ class DeviceLibrary:
             name (str): Name of the service
             init_system (str): Init. system. Defaults to 'systemd'
         """
-        self._control_service("is-enabled", name, exp_exit_code="!0", init_system=init_system)
+        self._control_service(
+            "is-enabled", name, exp_exit_code="!0", init_system=init_system
+        )
 
     @keyword("Service Should Be Running")
     def service_running(self, name: str, init_system: str = "systemd"):
@@ -669,7 +671,9 @@ class DeviceLibrary:
             name (str): Name of the service
             init_system (str): Init. system. Defaults to 'systemd'
         """
-        self._control_service("is-active", name, exp_exit_code="!0", init_system=init_system)
+        self._control_service(
+            "is-active", name, exp_exit_code="!0", init_system=init_system
+        )
 
     @keyword("Restart Service")
     def restart_service(self, name: str, init_system: str = "systemd"):
@@ -691,7 +695,13 @@ class DeviceLibrary:
 
         raise NotImplementedError("Currently only systemd is supported")
 
-    def _control_service(self, action: str, name: str, exp_exit_code: Union[int,str] = 0, init_system: str = "systemd"):
+    def _control_service(
+        self,
+        action: str,
+        name: str,
+        exp_exit_code: Union[int, str] = 0,
+        init_system: str = "systemd",
+    ):
         """Check if a file does not exists
 
         Args:
