@@ -10,6 +10,7 @@ from typing import Any, List, Union
 from datetime import datetime, timezone
 import re
 import os
+import time
 from pathlib import Path
 
 import dotenv
@@ -184,6 +185,12 @@ class DeviceLibrary:
     def get_suite_start_time(self) -> datetime:
         """Get the time that the suite was started"""
         return self.suite_start_time
+
+    @keyword("Get Unix Timestamp")
+    def get_unix_timestamp(self) -> int:
+        """Get the unix timestamp (number of seconds since 1970-01-01)
+        """
+        return int(time.time())
 
     @keyword("Setup")
     def setup(
