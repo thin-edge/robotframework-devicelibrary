@@ -631,6 +631,20 @@ class DeviceLibrary:
         """
         self._control_service("stop", name, init_system=init_system)
 
+    @keyword("Kill Process")
+    def kill_process(self, pid: int, signal: str = "KILL", wait: bool = True):
+        """Kill a process using a given signal, and by default wait for the process
+        to be killed.
+
+        Args:
+            pid (int): Process id to be killed
+            signal (str): Signal to send. Defaults to 'KILL'
+            wait (bool): Wait for the process to be killed. Defaults to True
+        """
+        self.execute_command(f"kill -{signal} {pid}", exp_exit_code="!0")
+        if wait:
+            self.execute_command(f"kill -0 {pid}", exp_exit_code="!0")
+
     @keyword("Service Should Be Enabled")
     def service_enabled(self, name: str, init_system: str = "systemd"):
         """Assert that the service is enabled (to start on device boot)
