@@ -187,9 +187,19 @@ class DeviceLibrary:
         return self.suite_start_time
 
     @keyword("Get Unix Timestamp")
-    def get_unix_timestamp(self) -> int:
+    def get_unix_timestamp(self, milliseconds: bool = False) -> Union[int, float]:
         """Get the unix timestamp (number of seconds since 1970-01-01)
+
+        When using seconds it will round down (using a cast).
+
+        Args:
+            milliseconds (bool, optional): Include milliseconds or not
+
+        Returns:
+            Union[int,float]: Number of seconds since unix epoch
         """
+        if milliseconds:
+            return time.time()
         return int(time.time())
 
     @keyword("Setup")
