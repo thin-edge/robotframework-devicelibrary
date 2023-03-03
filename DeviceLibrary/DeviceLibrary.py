@@ -641,7 +641,7 @@ class DeviceLibrary:
             signal (str): Signal to send. Defaults to 'KILL'
             wait (bool): Wait for the process to be killed. Defaults to True
         """
-        self.execute_command(f"kill -{signal} {pid}", exp_exit_code="!0")
+        self.execute_command(f"kill -{signal} {pid}", ignore_exit_code=True)
         if wait:
             self.execute_command(f"kill -0 {pid}", exp_exit_code="!0")
 
