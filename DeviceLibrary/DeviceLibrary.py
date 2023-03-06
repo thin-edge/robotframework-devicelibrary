@@ -732,7 +732,7 @@ class DeviceLibrary:
         elif init_system == "sysv":
             raise NotImplementedError("Currently only systemd is supported")
 
-        self.current.assert_command(command)
+        self.current.assert_command(command, exp_exit_code=exp_exit_code)
 
     #
     # Processes
