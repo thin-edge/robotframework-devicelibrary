@@ -8,3 +8,7 @@ results/
 .vscode/
 launch.json
 DeviceLibrary/_version.py
+log.html
+report.html
+output.xml
+DeviceLibrary/_version.py
