@@ -341,6 +341,9 @@ class DeviceLibrary:
         ignore_exit_code: bool = False,
         log_output: bool = True,
         strip: bool = False,
+        sudo: bool = None,
+        stdout: bool = True,
+        stderr: bool = False,
         **kwargs,
     ) -> str:
         """Execute a command on the device
@@ -350,28 +353,45 @@ class DeviceLibrary:
                 Use '!0' if you want to match against a non-zero exit code.
             ignore_exit_code (bool, optional): Ignore the return code. Defaults to False.
             strip (bool, optional): Strip whitespace from the output. Defaults to False.
+            sudo (bool, optional): Run command using sudo. Defaults to None.
+            stdout (bool, optional): Include stdout in the response. Defaults to True
+            stderr (bool, optional): Include stderr in the response. Defaults to False
 
         Returns:
-            str: _description_
+            Any: Result. If stdout and stderr are provided then a tuple of (stdout, stderr) is returned, otherwise
+                either stdout or stderr are returned as a string
         """
+        ignore_exit_code = is_truthy(ignore_exit_code)
+        log_output = is_truthy(log_output)
+        strip = is_truthy(strip)
+        stdout = is_truthy(stdout)
+        stderr = is_truthy(stderr)
+
         if ignore_exit_code:
             exp_exit_code = None
 
-        output = self.current.assert_command(
+        if sudo is not None:
+            kwargs["sudo"] = is_truthy(sudo)
+
+        result = self.current.assert_command(
             cmd,
             exp_exit_code=exp_exit_code,
             log_output=log_output,
             **kwargs,
         )
-        try:
-            output_text = output.decode("utf-8")
-            if strip:
-                return output_text.strip()
-            return output_text
-        except (UnicodeDecodeError, AttributeError):
-            if strip:
-                return output.strip()
-            return output
+        output = []
+        if stdout:
+            output.append(result.stdout.strip() if strip else result.stdout)
+        if stderr:
+            output.append(result.stderr.strip() if strip else result.stderr)
+
+        if len(output) == 0:
+            return
+
+        if len(output) == 1:
+            return output[0]
+
+        return tuple(output)
 
     @keyword("Get IP Address")
     def get_ipaddress(self) -> str:
@@ -454,7 +474,7 @@ class DeviceLibrary:
         Returns:
             str: Command output
         """
-        return self.current.assert_command("apt-get update").decode("utf8")
+        return self.current.assert_command("apt-get update").stdout
 
     @keyword("Install Package Using APT")
     def apt_install(self, *packages: str):
@@ -472,7 +492,7 @@ class DeviceLibrary:
         """
         return self.current.assert_command(
             "apt-get -y install " + " ".join(packages)
-        ).decode("utf8")
+        ).stdout
 
     @keyword("Remove Package Using APT")
     def apt_remove(self, *packages: str) -> str:
@@ -483,7 +503,7 @@ class DeviceLibrary:
         """
         return self.current.assert_command(
             "apt-get -y remove " + " ".join(packages)
-        ).decode("utf8")
+        ).stdout
 
     @keyword("Purge Package Using APT")
     def apt_purge(self, *packages: str) -> str:
@@ -497,7 +517,7 @@ class DeviceLibrary:
         """
         return self.current.assert_command(
             "apt-get -y remove " + " ".join(packages)
-        ).decode("utf8")
+        ).stdout
 
     #
     # Files/folders
@@ -537,15 +557,15 @@ class DeviceLibrary:
             List[str]: List of directories
         """
         if must_exist:
-            output = self.current.assert_command(
+            result = self.current.assert_command(
                 f"find '{path}' -maxdepth 1 -mindepth 1 -type d"
             )
         else:
-            output = self.current.assert_command(
+            result = self.current.assert_command(
                 f"find '{path}' -maxdepth 1 -mindepth 1 -type d 2>/dev/null || true"
             )
 
-        return output.decode("utf8").splitlines()
+        return result.stdout.splitlines()
 
     @keyword("Directory Should Not Have Sub Directories")
     def assert_directories_count(self, path: str, must_exist: bool = False):
@@ -631,20 +651,6 @@ class DeviceLibrary:
         """
         self._control_service("stop", name, init_system=init_system)
 
-    @keyword("Kill Process")
-    def kill_process(self, pid: int, signal: str = "KILL", wait: bool = True):
-        """Kill a process using a given signal, and by default wait for the process
-        to be killed.
-
-        Args:
-            pid (int): Process id to be killed
-            signal (str): Signal to send. Defaults to 'KILL'
-            wait (bool): Wait for the process to be killed. Defaults to True
-        """
-        self.execute_command(f"kill -{signal} {pid}", ignore_exit_code=True)
-        if wait:
-            self.execute_command(f"kill -0 {pid}", exp_exit_code="!0")
-
     @keyword("Service Should Be Enabled")
     def service_enabled(self, name: str, init_system: str = "systemd"):
         """Assert that the service is enabled (to start on device boot)
@@ -654,6 +660,16 @@ class DeviceLibrary:
             init_system (str): Init. system. Defaults to 'systemd'
         """
         self._control_service("is-enabled", name, init_system=init_system)
+
+    @keyword("Enable Service")
+    def enable_service(self, name: str, init_system: str = "systemd"):
+        """Enable a service to automatically start on boot device boot
+
+        Args:
+            name (str): Name of the service
+            init_system (str): Init. system. Defaults to 'systemd'
+        """
+        self._control_service("enable", name, init_system=init_system)
 
     @keyword("Service Should Be Disabled")
     def service_disabled(self, name: str, init_system: str = "systemd"):
@@ -666,6 +682,16 @@ class DeviceLibrary:
         self._control_service(
             "is-enabled", name, exp_exit_code="!0", init_system=init_system
         )
+
+    @keyword("Disable Service")
+    def disable_service(self, name: str, init_system: str = "systemd"):
+        """Disable a service so it does not automatically start on boot device boot
+
+        Args:
+            name (str): Name of the service
+            init_system (str): Init. system. Defaults to 'systemd'
+        """
+        self._control_service("disable", name, init_system=init_system)
 
     @keyword("Service Should Be Running")
     def service_running(self, name: str, init_system: str = "systemd"):
@@ -705,7 +731,7 @@ class DeviceLibrary:
         For systemd this would be a systemctl daemon-reload
         """
         if init_system == "systemd":
-            return self.execute_command("systemctl daemon-reload")
+            return self.current.execute_command("systemctl daemon-reload").stdout
 
         raise NotImplementedError("Currently only systemd is supported")
 
@@ -737,22 +763,36 @@ class DeviceLibrary:
     #
     # Processes
     #
+    @keyword("Kill Process")
+    def kill_process(self, pid: int, signal: str = "KILL", wait: bool = True):
+        """Kill a process using a given signal, and by default wait for the process
+        to be killed.
+
+        Args:
+            pid (int): Process id to be killed
+            signal (str): Signal to send. Defaults to 'KILL'
+            wait (bool): Wait for the process to be killed. Defaults to True
+        """
+        self.execute_command(f"kill -{signal} {pid}", ignore_exit_code=True)
+        if wait:
+            self.execute_command(f"kill -0 {pid}", exp_exit_code="!0")
+
     def _count_processes(self, pattern: str) -> int:
-        _, output = self.current.execute_command(
+        result = self.current.execute_command(
             f"""
             pgrep -fa '{pattern}' | grep -v "pgrep -fa" | wc -l
         """.strip()
         )
-        count = output.decode("utf8").strip()
+        count = result.stdout.strip()
         return int(count)
 
     def _find_processes(self, pattern: str) -> str:
-        _, output = self.current.execute_command(
+        result = self.current.execute_command(
             f"""
             pgrep -fa '{pattern}' | grep -v "pgrep -fa"
         """.strip()
         )
-        return output.decode("utf8").strip()
+        return result.stdout.strip()
 
     @keyword("Process Should Be Running")
     def assert_process_exists(self, pattern: str):
