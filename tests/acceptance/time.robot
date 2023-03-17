@@ -4,6 +4,7 @@ Library        DeviceLibrary    adapter=docker
 Library        DateTime
 Library        String
 
+Suite Setup    Setup    skip_bootstrap=${True}
 
 *** Test Cases ***
 
@@ -33,6 +34,11 @@ Get UnixTimestamp as seconds
 Get UnixTimestamp with milliseconds
     ${value1}    Get Unix Timestamp
     ${value2}    Get Unix Timestamp    milliseconds=${True}
+    Should Be True    ${value2} > ${value1}
+
+Get UnixTimestamp from host with milliseconds
+    ${value1}    Get Unix Timestamp From Host
+    ${value2}    Get Unix Timestamp From Host    milliseconds=${True}
     Should Be True    ${value2} > ${value1}
 
 *** Keywords ***

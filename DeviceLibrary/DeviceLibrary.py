@@ -188,7 +188,31 @@ class DeviceLibrary:
 
     @keyword("Get Unix Timestamp")
     def get_unix_timestamp(self, milliseconds: bool = False) -> Union[int, float]:
-        """Get the unix timestamp (number of seconds since 1970-01-01)
+        """Get the unix timestamp of the device (number of seconds since 1970-01-01).
+        This returns the unix timestamp of the device under test, not the host where
+        the test is being called from.
+
+        When using seconds it will round down (using a cast).
+
+        Args:
+            milliseconds (bool, optional): Include milliseconds or not
+
+        Returns:
+            Union[int,float]: Number of seconds since unix epoch
+        """
+        if milliseconds:
+            nano_seconds = int(
+                self.execute_command(r"date +%s%N", stdout=True, stderr=False)
+            )
+            return float(nano_seconds / 1_000_000_000)
+
+        return int(self.execute_command(r"date +%s", stdout=True, stderr=False))
+
+    @keyword("Get Unix Timestamp From Host")
+    def get_unix_timestamp_from_host(
+        self, milliseconds: bool = False
+    ) -> Union[int, float]:
+        """Get the unix timestamp from the test host (not the device) (number of seconds since 1970-01-01)
 
         When using seconds it will round down (using a cast).
 
