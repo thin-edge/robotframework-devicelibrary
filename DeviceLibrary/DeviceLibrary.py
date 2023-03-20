@@ -228,7 +228,11 @@ class DeviceLibrary:
 
     @keyword("Setup")
     def setup(
-        self, skip_bootstrap: bool = None, cleanup: bool = None, adapter: str = None
+        self,
+        skip_bootstrap: bool = None,
+        cleanup: bool = None,
+        adapter: str = None,
+        env_file=".env",
     ) -> str:
         """Create a device to use for testing
 
@@ -273,10 +277,33 @@ class DeviceLibrary:
 
             device_sn = normalize_container_name(generate_custom_name())
 
+            # Use any env variables which contain a host to ip mapping
+            # as it will be added to the docker /etc/hosts list to reduce
+            # any problems with external ip addresses
+            # Example env variable:
+            #   DEVICELIBRARY_HOST_MYDOMAIN="example.mydomain.com=1.2.3.4"
+            #
+            extra_hosts = {}
+            if os.path.exists(env_file):
+                env_values = dotenv.dotenv_values(env_file)
+                hosts = [
+                    key
+                    for key in env_values.keys()
+                    if key.startswith("DEVICELIBRARY_HOST_")
+                ]
+
+                for key in hosts:
+                    entry = env_values.get(key)
+                    hostname, _, ip_address = entry.partition("=")
+                    hostname = re.sub(r"^\w+://", "", hostname)
+                    if hostname and ip_address:
+                        extra_hosts[hostname] = ip_address
+
             device = DockerDeviceFactory().create_device(
                 device_sn,
                 image=config.pop("image", self.__image),
-                env_file=".env",
+                env_file=env_file,
+                extra_hosts=extra_hosts,
                 **config,
             )
         elif adapter_type == "ssh":
@@ -291,7 +318,7 @@ class DeviceLibrary:
             }
             device = SSHDeviceFactory().create_device(
                 device_sn,
-                env_file=".env",
+                env_file=env_file,
                 env=env,
                 **config,
             )
@@ -315,7 +342,7 @@ class DeviceLibrary:
             }
             device = LocalDeviceFactory().create_device(
                 device_sn,
-                env_file=".env",
+                env_file=env_file,
                 env=env,
                 **config,
             )
