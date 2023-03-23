@@ -574,7 +574,7 @@ class DeviceLibrary:
     # Files/folders
     #
     @keyword("Directory Should Be Empty")
-    def assert_directory_empty(self, path: str, must_exist: bool = False):
+    def assert_directory_empty(self, path: str, must_exist: bool = False, **kwargs):
         """Check if a directory is empty.
 
         You can define if the check should fail if the folder does not exist or not.
@@ -588,19 +588,21 @@ class DeviceLibrary:
             self.current.assert_command(
                 f"""
                 [ -d '{path}' ] && [ -z "$(ls -A '{path}')" ]
-                """.strip()
+                """.strip(),
+                **kwargs,
             )
         else:
             # Don't fail if the folder does not exist, just count the contents
             self.current.assert_command(
                 f"""
                 [ -z "$(ls -A '{path}' 2>/dev/null || true)" ]
-                """.strip()
+                """.strip(),
+                **kwargs,
             )
 
     @keyword("List Directories in Directory")
     def get_directories_in_directory(
-        self, path: str, must_exist: bool = False
+        self, path: str, must_exist: bool = False, **kwargs
     ) -> List[str]:
         """List the directories in a given directory
 
@@ -609,17 +611,18 @@ class DeviceLibrary:
         """
         if must_exist:
             result = self.current.assert_command(
-                f"find '{path}' -maxdepth 1 -mindepth 1 -type d"
+                f"find '{path}' -maxdepth 1 -mindepth 1 -type d", **kwargs
             )
         else:
             result = self.current.assert_command(
-                f"find '{path}' -maxdepth 1 -mindepth 1 -type d 2>/dev/null || true"
+                f"find '{path}' -maxdepth 1 -mindepth 1 -type d 2>/dev/null || true",
+                **kwargs,
             )
 
         return result.stdout.splitlines()
 
     @keyword("Directory Should Not Have Sub Directories")
-    def assert_directories_count(self, path: str, must_exist: bool = False):
+    def assert_directories_count(self, path: str, must_exist: bool = False, **kwargs):
         """Check if directory has no sub directories
 
         Args:
@@ -627,11 +630,11 @@ class DeviceLibrary:
             must_exist (bool, optional): Should an error be thrown if the directory
                 does not exist. Defaults to False.
         """
-        dirs = self.get_directories_in_directory(path, must_exist)
+        dirs = self.get_directories_in_directory(path, must_exist, **kwargs)
         assert len(dirs) == 0
 
     @keyword("Directory Should Not Be Empty")
-    def assert_directory_not_empty(self, path: str):
+    def assert_directory_not_empty(self, path: str, **kwargs):
         """Check if a directory is empty
 
         Args:
@@ -640,44 +643,45 @@ class DeviceLibrary:
         self.current.assert_command(
             f"""
             [ -d '{path}' ] && [ -n "$(ls -A '{path}')" ]
-        """.strip()
+        """.strip(),
+            **kwargs,
         )
 
     @keyword("Directory Should Exist")
-    def assert_directory(self, path: str):
+    def assert_directory(self, path: str, **kwargs):
         """Check if a directory exists
 
         Args:
             path (str): Directory path
         """
-        self.current.assert_command(f"test -d '{path}'")
+        self.current.assert_command(f"test -d '{path}'", **kwargs)
 
     @keyword("Directory Should Not Exist")
-    def assert_not_directory(self, path: str):
+    def assert_not_directory(self, path: str, **kwargs):
         """Check if a directory does not exists
 
         Args:
             path (str): Directory path
         """
-        self.current.assert_command(f"! test -d '{path}'")
+        self.current.assert_command(f"! test -d '{path}'", **kwargs)
 
     @keyword("File Should Exist")
-    def assert_file_exists(self, path: str):
+    def assert_file_exists(self, path: str, **kwargs):
         """Check if a file exists
 
         Args:
             path (str): File path
         """
-        self.current.assert_command(f"test -f '{path}'")
+        self.current.assert_command(f"test -f '{path}'", **kwargs)
 
     @keyword("File Should Not Exist")
-    def assert_not_file_exists(self, path: str):
+    def assert_not_file_exists(self, path: str, **kwargs):
         """Check if a file does not exists
 
         Args:
             path (str): File path
         """
-        self.current.assert_command(f"! test -f '{path}'")
+        self.current.assert_command(f"! test -f '{path}'", **kwargs)
 
     #
     # Service Control
@@ -723,7 +727,7 @@ class DeviceLibrary:
         self._control_service("enable", name, init_system=init_system)
 
     @keyword("Service Should Be Disabled")
-    def service_disabled(self, name: str, init_system: str = "systemd"):
+    def service_disabled(self, name: str, init_system: str = "systemd", **kwargs):
         """Assert that the service is enabled (to start on device boot)
 
         Args:
@@ -731,7 +735,11 @@ class DeviceLibrary:
             init_system (str): Init. system. Defaults to 'systemd'
         """
         self._control_service(
-            "is-enabled", name, exp_exit_code="!0", init_system=init_system
+            "is-enabled",
+            name,
+            exp_exit_code="!0",
+            init_system=init_system,
+            **kwargs,
         )
 
     @keyword("Disable Service")
@@ -745,17 +753,17 @@ class DeviceLibrary:
         self._control_service("disable", name, init_system=init_system)
 
     @keyword("Service Should Be Running")
-    def service_running(self, name: str, init_system: str = "systemd"):
+    def service_running(self, name: str, init_system: str = "systemd", **kwargs):
         """Assert that the service is running
 
         Args:
             name (str): Name of the service
             init_system (str): Init. system. Defaults to 'systemd'
         """
-        self._control_service("is-active", name, init_system=init_system)
+        self._control_service("is-active", name, init_system=init_system, **kwargs)
 
     @keyword("Service Should Be Stopped")
-    def service_stopping(self, name: str, init_system: str = "systemd"):
+    def service_stopping(self, name: str, init_system: str = "systemd", **kwargs):
         """Assert that the service is stopped
 
         Args:
@@ -763,7 +771,11 @@ class DeviceLibrary:
             init_system (str): Init. system. Defaults to 'systemd'
         """
         self._control_service(
-            "is-active", name, exp_exit_code="!0", init_system=init_system
+            "is-active",
+            name,
+            exp_exit_code="!0",
+            init_system=init_system,
+            **kwargs,
         )
 
     @keyword("Restart Service")
@@ -792,6 +804,7 @@ class DeviceLibrary:
         name: str,
         exp_exit_code: Union[int, str] = 0,
         init_system: str = "systemd",
+        **kwargs,
     ):
         """Check if a file does not exists
 
@@ -809,7 +822,7 @@ class DeviceLibrary:
         elif init_system == "sysv":
             raise NotImplementedError("Currently only systemd is supported")
 
-        self.current.assert_command(command, exp_exit_code=exp_exit_code)
+        self.current.assert_command(command, exp_exit_code=exp_exit_code, **kwargs)
 
     #
     # Processes
@@ -846,7 +859,7 @@ class DeviceLibrary:
         return result.stdout.strip()
 
     @keyword("Process Should Be Running")
-    def assert_process_exists(self, pattern: str):
+    def assert_process_exists(self, pattern: str, **kwargs):
         """Check if at least 1 process is running given a pattern
 
         Args:
@@ -855,11 +868,12 @@ class DeviceLibrary:
         self.current.assert_command(
             f"""
             pgrep -fa '{pattern}' | grep -v "pgrep -fa"
-        """.strip()
+        """.strip(),
+            **kwargs,
         )
 
     @keyword("Process Should Not Be Running")
-    def assert_process_not_exists(self, pattern: str):
+    def assert_process_not_exists(self, pattern: str, **kwargs):
         """Check that there are no processes matching a given pattern
 
         Args:
@@ -874,7 +888,7 @@ class DeviceLibrary:
 
     @keyword("Should Match Processes")
     def assert_process_count(
-        self, pattern: str, minimum: int = 1, maximum: int = None
+        self, pattern: str, minimum: int = 1, maximum: int = None, **kwargs
     ) -> int:
         """Check how many processes are running which match a given pattern
 
