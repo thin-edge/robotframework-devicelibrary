@@ -11,10 +11,17 @@ Transfer single file
     # Local has problems due to lack of sudo rights
     # local    ${TEMPDIR}/test/transfer_to_device/single/
 
+Transfer single file and rename
+    [Template]    Transfer single file and rename
+    ssh    /test/transfer_to_device/single/renamed_file.txt
+    docker    /test/transfer_to_device/single/renamed_file.txt
+    # Local has problems due to lack of sudo rights
+    # local    ${TEMPDIR}/test/transfer_to_device/single/renamed_file.txt
+
 Transfer multiple files
     [Template]    Transfer multiple files
-    ssh    /test/transfer_to_device/multiple
-    docker    /test/transfer_to_device/multiple
+    ssh    /test/transfer_to_device/multiple/
+    docker    /test/transfer_to_device/multiple/
     # Local has problems due to lack of sudo rights
     # local    ${TEMPDIR}/test/transfer_to_device/multiple/
 
@@ -35,6 +42,13 @@ Transfer single file
     Setup    skip_bootstrap=${True}    adapter=${ADAPTER}
     Transfer To Device    ${CURDIR}/data/file1.txt    ${DESTINATION}
     File Should Exist    ${DESTINATION}file1.txt
+    Execute Command    rm -rf "${DESTINATION}"
+
+Transfer single file and rename
+    [Arguments]    ${ADAPTER}    ${DESTINATION}
+    Setup    skip_bootstrap=${True}    adapter=${ADAPTER}
+    Transfer To Device    ${CURDIR}/data/file1.txt    ${DESTINATION}
+    File Should Exist    ${DESTINATION}
     Execute Command    rm -rf "${DESTINATION}"
 
 Transfer multiple files

@@ -506,6 +506,12 @@ class DeviceLibrary:
     def transfer_to_device(self, src: str, dst: str):
         """Transfer files to a device
 
+        Examples:
+
+            | Transfer To Device | src=${CURDIR}/myfile.txt | dst=/etc/any/path/newfilename.txt |
+            | Transfer To Device | src=${CURDIR}/myfile.txt | dst=/etc/any/path/ |
+            | Transfer To Device | src=${CURDIR}/*.txt | dst=/etc/any/path/ |
+
         Args:
             src (str): Source file, folder or pattern
             dst (str): Destination path to copy to the files to
