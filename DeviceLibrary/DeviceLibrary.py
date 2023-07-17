@@ -836,44 +836,44 @@ class DeviceLibrary:
     # Service Control
     #
     @keyword("Start Service")
-    def start_service(self, name: str, init_system: str = "systemd"):
+    def start_service(self, name: str, init_system: str = "systemd", **kwargs):
         """Start a service
 
         Args:
             name (str): Name of the service
             init_system (str): Init. system. Defaults to 'systemd'
         """
-        self._control_service("start", name, init_system=init_system)
+        self._control_service("start", name, init_system=init_system, **kwargs)
 
     @keyword("Stop Service")
-    def stop_service(self, name: str, init_system: str = "systemd"):
+    def stop_service(self, name: str, init_system: str = "systemd", **kwargs):
         """Stop a service
 
         Args:
             name (str): Name of the service
             init_system (str): Init. system. Defaults to 'systemd'
         """
-        self._control_service("stop", name, init_system=init_system)
+        self._control_service("stop", name, init_system=init_system, **kwargs)
 
     @keyword("Service Should Be Enabled")
-    def service_enabled(self, name: str, init_system: str = "systemd"):
+    def service_enabled(self, name: str, init_system: str = "systemd", **kwargs):
         """Assert that the service is enabled (to start on device boot)
 
         Args:
             name (str): Name of the service
             init_system (str): Init. system. Defaults to 'systemd'
         """
-        self._control_service("is-enabled", name, init_system=init_system)
+        self._control_service("is-enabled", name, init_system=init_system, **kwargs)
 
     @keyword("Enable Service")
-    def enable_service(self, name: str, init_system: str = "systemd"):
+    def enable_service(self, name: str, init_system: str = "systemd", **kwargs):
         """Enable a service to automatically start on boot device boot
 
         Args:
             name (str): Name of the service
             init_system (str): Init. system. Defaults to 'systemd'
         """
-        self._control_service("enable", name, init_system=init_system)
+        self._control_service("enable", name, init_system=init_system, **kwargs)
 
     @keyword("Service Should Be Disabled")
     def service_disabled(self, name: str, init_system: str = "systemd", **kwargs):
@@ -892,14 +892,14 @@ class DeviceLibrary:
         )
 
     @keyword("Disable Service")
-    def disable_service(self, name: str, init_system: str = "systemd"):
+    def disable_service(self, name: str, init_system: str = "systemd", **kwargs):
         """Disable a service so it does not automatically start on boot device boot
 
         Args:
             name (str): Name of the service
             init_system (str): Init. system. Defaults to 'systemd'
         """
-        self._control_service("disable", name, init_system=init_system)
+        self._control_service("disable", name, init_system=init_system, **kwargs)
 
     @keyword("Service Should Be Running")
     def service_running(self, name: str, init_system: str = "systemd", **kwargs):
@@ -928,22 +928,22 @@ class DeviceLibrary:
         )
 
     @keyword("Restart Service")
-    def restart_service(self, name: str, init_system: str = "systemd"):
+    def restart_service(self, name: str, init_system: str = "systemd", **kwargs):
         """Restart a service
 
         Args:
             name (str): Name of the service
             init_system (str): Init. system. Defaults to 'systemd'
         """
-        self._control_service("restart", name, init_system=init_system)
+        self._control_service("restart", name, init_system=init_system, **kwargs)
 
     @keyword("Reload Services Manager")
-    def reload_services_manager(self, init_system: str = "systemd"):
+    def reload_services_manager(self, init_system: str = "systemd", **kwargs):
         """Reload the services manager
         For systemd this would be a systemctl daemon-reload
         """
         if init_system == "systemd":
-            return self.current.execute_command("systemctl daemon-reload").stdout
+            return self.current.execute_command("systemctl daemon-reload", **kwargs).stdout
 
         raise NotImplementedError("Currently only systemd is supported")
 
@@ -977,7 +977,7 @@ class DeviceLibrary:
     # Processes
     #
     @keyword("Kill Process")
-    def kill_process(self, pid: int, signal: str = "KILL", wait: bool = True):
+    def kill_process(self, pid: int, signal: str = "KILL", wait: bool = True, **kwargs):
         """Kill a process using a given signal, and by default wait for the process
         to be killed.
 
@@ -986,9 +986,9 @@ class DeviceLibrary:
             signal (str): Signal to send. Defaults to 'KILL'
             wait (bool): Wait for the process to be killed. Defaults to True
         """
-        self.execute_command(f"kill -{signal} {pid}", ignore_exit_code=True)
+        self.execute_command(f"kill -{signal} {pid}", ignore_exit_code=True, **kwargs)
         if wait:
-            self.execute_command(f"kill -0 {pid}", exp_exit_code="!0")
+            self.execute_command(f"kill -0 {pid}", exp_exit_code="!0", **kwargs)
 
     def _count_processes(self, pattern: str) -> int:
         result = self.current.execute_command(
