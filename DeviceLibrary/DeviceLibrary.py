@@ -482,8 +482,7 @@ class DeviceLibrary:
             except Exception as ex:
                 logger.warning("Error during device cleanup. %s", ex)
 
-    @keyword("Get Logs")
-    def get_logs(
+    def _get_logs(
         self, name: str = None, date_from: Union[datetime, float] = None, show=True
     ):
         """Get device logs
@@ -514,6 +513,26 @@ class DeviceLibrary:
                 print(line)
 
         return log_output
+
+    @keyword("Get Logs")
+    def get_logs(
+        self, name: str = None, date_from: Union[datetime, float] = None, show=True
+    ):
+        """Get device logs
+
+        Args:
+            name (str, optional): name. Defaults to current device.
+            date_from (Union[datetime, float]: Only include logs starting from a specific datetime
+                Accepts either datetime object, or a float (linux timestamp) in seconds.
+            show (boolean, optional): Show/Display the log entries
+
+        Returns:
+            List[str]: List of log lines
+
+        Raises:
+            Exception: Unknown device
+        """
+        return self._get_logs(name=name, date_from=date_from, show=show)
 
     @keyword("Logs Should Contain")
     def assert_log_contains(
@@ -556,7 +575,7 @@ class DeviceLibrary:
         Returns:
             List[str]: List of matching log entries
         """
-        entries = super().get_logs(name=name, date_from=date_from, show=False)
+        entries = self._get_logs(name=name, date_from=date_from, show=False)
 
         matches = []
         if text:
