@@ -26,7 +26,7 @@ from device_test_core.utils import generate_name
 
 def raise_adapter_error(adapter: str):
     """
-    Raise an adapter error and hint on what depencency is missing
+    Raise an adapter error and hint on what dependency is missing
 
     Args:
         adapter (str): adapter type, e.g. ssh, docker, local
