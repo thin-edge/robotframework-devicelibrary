@@ -483,11 +483,19 @@ class DeviceLibrary:
                 logger.warning("Error during device cleanup. %s", ex)
 
     @keyword("Get Logs")
-    def get_logs(self, name: str = None):
+    def get_logs(
+        self, name: str = None, date_from: Union[datetime, float] = None, show=True
+    ):
         """Get device logs
 
         Args:
             name (str, optional): name. Defaults to current device.
+            date_from (Union[datetime, float]: Only include logs starting from a specific datetime
+                Accepts either datetime object, or a float (linux timestamp) in seconds.
+            show (boolean, optional): Show/Display the log entries
+
+        Returns:
+            List[str]: List of log lines
 
         Raises:
             Exception: Unknown device
@@ -499,8 +507,124 @@ class DeviceLibrary:
 
             device = self.devices.get(name)
 
-        for line in device.get_logs():
-            print(line)
+        log_output = device.get_logs(since=date_from)
+
+        if show:
+            for line in log_output:
+                print(line)
+
+        return log_output
+
+    @keyword("Logs Should Contain")
+    def assert_log_contains(
+        self,
+        text: str = None,
+        pattern: str = None,
+        date_from: Union[datetime, float] = None,
+        min_matches: int = 1,
+        max_matches: int = None,
+        name: str = None,
+    ) -> List[str]:
+        """Assert that the logs should contain the present of a given text or pattern (regex).
+
+        Examples:
+
+            | Logs Should Contain | text=Executing something |
+            | Logs Should Contain | pattern=.*Executing something.* |
+            | Logs Should Contain | pattern=.*Executing something.* | min_matches=2 |
+            | Logs Should Contain | pattern=.*Executing something.* | date_from="2023-01-01" |
+
+        Args:
+            text (str, optional): Assert the present of a static string (case insensitive).
+                Each line will be checked to see if it contains the given text.
+
+            pattern (str, optional): Assert that a line should match a given regular expression
+                (case insensitive). It must match the entire line.
+
+            min_matches (int, optional): Minimum number of expected line matches (inclusive).
+                Defaults to 1. Assertion will be ignored if set to None.
+
+            max_matches (int, optional): Maximum number of expected line matches (inclusive).
+                Defaults to None. Assertion will be ignored if set to None.
+
+            date_from (Union[datetime, float], optional): Only include log entires from a given
+                datetime/timestamp. As a datetime object or a float (in seconds, e.g. linux timestamp).
+
+            name (str, optional): Name of the device to get the logs from.
+                Defaults to current device.
+
+        Returns:
+            List[str]: List of matching log entries
+        """
+        entries = self.get_logs(name=name, date_from=date_from, show=False)
+
+        matches = []
+        if text:
+            text_lower = text.lower()
+            matches = [line for line in entries if text_lower in str(line).lower()]
+        elif pattern:
+            re_pattern = re.compile(pattern, re.IGNORECASE)
+            matches = [line for line in entries if re_pattern.match(line) is not None]
+        else:
+            raise ValueError(
+                "Missing required argument. Either 'text' or 'pattern' must be given"
+            )
+
+        if min_matches is not None:
+            assert len(matches) >= min_matches, (
+                "Total matching log entries is less than expected. "
+                f"wanted={min_matches} (min)\n"
+                f"got={len(matches)}\n\n"
+                f"entries:\n{matches}"
+            )
+
+        if max_matches is not None:
+            assert len(matches) <= max_matches, (
+                "Total matching log entries is greater than expected. "
+                f"wanted={min_matches} (max)\n"
+                f"got={len(matches)}\n\n"
+                f"entries:\n{matches}"
+            )
+
+        return matches
+
+    @keyword("Logs Should Not Contain")
+    def assert_log_not_contains(
+        self,
+        text: str = None,
+        pattern: str = None,
+        date_from: Union[datetime, float] = None,
+        name: str = None,
+    ):
+        """Assert that the logs should NOT contain the present of a given text or pattern (regex).
+
+        Examples:
+
+            | Logs Should Not Contain | text=Executing something |
+            | Logs Should Not Contain | pattern=.*Executing something.* |
+            | Logs Should Not Contain | pattern=.*Executing something.* | date_from="2023-01-01" |
+
+        Args:
+            text (str, optional): Assert the present of a static string (case insensitive).
+                Each line will be checked to see if it contains the given text.
+
+            pattern (str, optional): Assert that a line should match a given regular expression
+                (case insensitive). It must match the entire line.
+
+            date_from (Union[datetime, float], optional): Only include log entires from a given
+                datetime/timestamp. As a datetime object or a float (in seconds, e.g. linux timestamp).
+
+            name (str, optional): Name of the device to get the logs from.
+                Defaults to current device.
+        """
+        self.assert_log_contains(
+            text=text,
+            pattern=pattern,
+            name=name,
+            date_from=date_from,
+            min_matches=0,
+            max_matches=0,
+        )
 
     @keyword("Transfer To Device")
     def transfer_to_device(self, src: str, dst: str):
