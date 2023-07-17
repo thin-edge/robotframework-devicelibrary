@@ -556,7 +556,7 @@ class DeviceLibrary:
         Returns:
             List[str]: List of matching log entries
         """
-        entries = self.get_logs(name=name, date_from=date_from, show=False)
+        entries = super().get_logs(name=name, date_from=date_from, show=False)
 
         matches = []
         if text:
