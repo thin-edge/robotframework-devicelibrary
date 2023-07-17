@@ -102,6 +102,10 @@ class DeviceLibrary:
         # pylint: disable=invalid-name
         self.ROBOT_LIBRARY_LISTENER = self
 
+        # Configure retries
+        configure_retry_on_members(self, "^assert_log_contains")
+        configure_retry_on_members(self, "^assert_log_not_contains")
+
     def _get_adapter(self) -> str:
         return (
             self.adapter
