@@ -89,14 +89,13 @@ class DeviceLibrary:
         bootstrap_script: str = DEFAULT_BOOTSTRAP_SCRIPT,
     ):
         self.devices = {}
+        self.devices_setup_times = {}
         self.__image = image
         self.adapter = adapter
         self.__bootstrap_script = bootstrap_script
         self.current: DeviceAdapter = None
         self.test_start_time = None
         self.suite_start_time = None
-        self.device_test_start_time = None
-        self.device_suite_start_time = None
 
         # load any settings from dotenv file
         dotenv.load_dotenv(".env")
@@ -130,12 +129,6 @@ class DeviceLibrary:
         """
         self.suite_start_time = datetime.now(tz=timezone.utc)
 
-        try:
-            ts = self.get_unix_timestamp(milliseconds=True)
-            self.device_suite_start_time = datetime.fromtimestamp(ts, tz=timezone.utc)
-        except Exception as ex:
-            logger.info("Failed to get device suite start time", ex, exc_info=True)
-
     def start_test(self, _data: Any, _result: Any):
         """Hook which is triggered when the test starts
 
@@ -147,12 +140,6 @@ class DeviceLibrary:
             _result (Any): Test case results
         """
         self.test_start_time = datetime.now(tz=timezone.utc)
-
-        try:
-            ts = self.get_unix_timestamp(milliseconds=True)
-            self.device_test_start_time = datetime.fromtimestamp(ts, tz=timezone.utc)
-        except Exception as ex:
-            logger.info("Failed to get device test start time", ex, exc_info=True)
 
     def end_suite(self, _data: Any, result: Any):
         """End suite hook which is called by Robot Framework
@@ -383,6 +370,12 @@ class DeviceLibrary:
         configure_retry_on_members(device, "^assert_command")
         self.current = device
 
+        # Record the time after the device has been setup (but not yet bootstrapped)
+        self.devices_setup_times[device_sn] = datetime.fromtimestamp(
+            self.get_unix_timestamp(milliseconds=True),
+            tz=timezone.utc,
+        )
+
         # Install/Bootstrap device here after the container starts due to
         # install problems when systemd is not running (during the build stage)
         # But it also allows us to possibly customize which version is installed
@@ -391,6 +384,12 @@ class DeviceLibrary:
             device.assert_command(bootstrap_script, log_output=True, shell=True)
 
         return device_sn
+
+    @keyword("Get Setup Time")
+    def get_setup_time(self, name: str = None):
+        """Get setup time of a device (in the local device time)"""
+        device = self.devices.get(name) if name else self.current
+        return self.devices_setup_times.get(device.get_id())
 
     @keyword("Set Device Context")
     def set_current(self, name: str):
