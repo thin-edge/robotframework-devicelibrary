@@ -95,6 +95,8 @@ class DeviceLibrary:
         self.current: DeviceAdapter = None
         self.test_start_time = None
         self.suite_start_time = None
+        self.device_test_start_time = None
+        self.device_suite_start_time = None
 
         # load any settings from dotenv file
         dotenv.load_dotenv(".env")
@@ -128,6 +130,12 @@ class DeviceLibrary:
         """
         self.suite_start_time = datetime.now(tz=timezone.utc)
 
+        try:
+            ts = self.get_unix_timestamp(milliseconds=True)
+            self.device_suite_start_time = datetime.fromtimestamp(ts, tz=timezone.utc)
+        except Exception as ex:
+            logger.info("Failed to get device suite start time", ex, exc_info=True)
+
     def start_test(self, _data: Any, _result: Any):
         """Hook which is triggered when the test starts
 
@@ -139,6 +147,12 @@ class DeviceLibrary:
             _result (Any): Test case results
         """
         self.test_start_time = datetime.now(tz=timezone.utc)
+
+        try:
+            ts = self.get_unix_timestamp(milliseconds=True)
+            self.device_test_start_time = datetime.fromtimestamp(ts, tz=timezone.utc)
+        except Exception as ex:
+            logger.info("Failed to get device test start time", ex, exc_info=True)
 
     def end_suite(self, _data: Any, result: Any):
         """End suite hook which is called by Robot Framework
