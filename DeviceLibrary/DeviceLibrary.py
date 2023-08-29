@@ -142,14 +142,14 @@ class DeviceLibrary:
         ts = None
         try:
             # Use device time (to avoid problems with time drift between host and device)
-            ts = self.get_unix_timestamp(milliseconds=True)
+            ts = self.get_unix_timestamp(milliseconds=False)
             logger.info("Set test start time from device")
         except Exception as ex:
-            logger.debug("Could not set start time from device", ex)
-        
+            logger.debug("Could not set start time from device. %s", ex)
+
         if not ts:
             logger.info("Set test start time from host as no device is active")
-            ts = datetime.timestamp()
+            ts = self.get_unix_timestamp_from_host(milliseconds=False)
 
         self.test_start_time = datetime.fromtimestamp(ts, tz=timezone.utc)
 
