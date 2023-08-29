@@ -139,12 +139,16 @@ class DeviceLibrary:
             _data (Any): Test case
             _result (Any): Test case results
         """
-        if self.current:
+        ts = None
+        try:
             # Use device time (to avoid problems with time drift between host and device)
-            logger.info("Setting test start time from device")
             ts = self.get_unix_timestamp(milliseconds=True)
-        else:
-            logger.info("Setting test start time from host as no device is active")
+            logger.info("Set test start time from device")
+        except Exception as ex:
+            logger.debug("Could not set start time from device", ex)
+        
+        if not ts:
+            logger.info("Set test start time from host as no device is active")
             ts = datetime.timestamp()
 
         self.test_start_time = datetime.fromtimestamp(ts, tz=timezone.utc)
