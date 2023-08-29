@@ -139,7 +139,15 @@ class DeviceLibrary:
             _data (Any): Test case
             _result (Any): Test case results
         """
-        self.test_start_time = datetime.now(tz=timezone.utc)
+        if self.current:
+            # Use device time (to avoid problems with time drift between host and device)
+            logger.info("Setting test start time from device")
+            ts = self.get_unix_timestamp(milliseconds=True)
+        else:
+            logger.info("Setting test start time from host as no device is active")
+            ts = datetime.timestamp()
+
+        self.test_start_time = datetime.fromtimestamp(ts, tz=timezone.utc)
 
     def end_suite(self, _data: Any, result: Any):
         """End suite hook which is called by Robot Framework
