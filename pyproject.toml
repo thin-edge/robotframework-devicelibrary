@@ -34,13 +34,13 @@ all = [
     "robotframework-devicelibrary[local]",
 ]
 ssh = [
-    "device-test-core[ssh] @ git+https://github.com/reubenmiller/device-test-core.git@1.6.0",
+    "device-test-core[ssh] @ git+https://github.com/reubenmiller/device-test-core.git@1.6.2",
 ]
 local = [
-    "device-test-core[local] @ git+https://github.com/reubenmiller/device-test-core.git@1.6.0",
+    "device-test-core[local] @ git+https://github.com/reubenmiller/device-test-core.git@1.6.2",
 ]
 docker = [
-    "device-test-core[docker] @ git+https://github.com/reubenmiller/device-test-core.git@1.6.0",
+    "device-test-core[docker] @ git+https://github.com/reubenmiller/device-test-core.git@1.6.2",
 ]
 
 test = [
