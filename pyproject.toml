@@ -23,7 +23,7 @@ dynamic = ["version"]
 dependencies = [
   "robotframework >= 6.0.0, < 7.0.0",
   "unidecode >= 1.3.6, < 2.0.0",
-  "device-test-core @ git+https://github.com/reubenmiller/device-test-core.git@1.7.1",
+  "device-test-core @ git+https://github.com/reubenmiller/device-test-core.git@1.7.2",
   "importlib-metadata >= 6.0.0, < 7.0.0; python_version<'3.8'",
 ]
 
@@ -34,13 +34,13 @@ all = [
     "robotframework-devicelibrary[local]",
 ]
 ssh = [
-    "device-test-core[ssh] @ git+https://github.com/reubenmiller/device-test-core.git@1.7.1",
+    "device-test-core[ssh] @ git+https://github.com/reubenmiller/device-test-core.git@1.7.2",
 ]
 local = [
-    "device-test-core[local] @ git+https://github.com/reubenmiller/device-test-core.git@1.7.1",
+    "device-test-core[local] @ git+https://github.com/reubenmiller/device-test-core.git@1.7.2",
 ]
 docker = [
-    "device-test-core[docker] @ git+https://github.com/reubenmiller/device-test-core.git@1.7.1",
+    "device-test-core[docker] @ git+https://github.com/reubenmiller/device-test-core.git@1.7.2",
 ]
 
 test = [

@@ -864,7 +864,7 @@ class DeviceLibrary:
     @keyword("Path Should Have Permissions")
     def assert_linux_permissions(
         self, path: str, mode: str = None, owner_group: str = None
-    ) -> List[str, str]:
+    ) -> List[str]:
         """Assert the linux group/ownership and permissions (mode) on a given path
 
         Examples:
@@ -879,7 +879,7 @@ class DeviceLibrary:
             owner_group (str): Owner/group in the format of owner:group. Defaults to None
 
         Returns:
-            List[str, str]: List of the actual mode and owner/group (e.g. ['644', 'root:root'])
+            List[str]: List of the actual mode and owner/group (e.g. ['644', 'root:root'])
         """
         return self.current.assert_linux_permissions(
             path, mode=mode, owner_group=owner_group
