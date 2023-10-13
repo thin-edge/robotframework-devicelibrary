@@ -861,6 +861,30 @@ class DeviceLibrary:
         """
         self.current.assert_command(f"! test -f '{path}'", **kwargs)
 
+    @keyword("Path Should Have Permissions")
+    def assert_linux_permissions(
+        self, path: str, mode: str = None, owner_group: str = None
+    ) -> List[str, str]:
+        """Assert the linux group/ownership and permissions (mode) on a given path
+
+        Examples:
+
+            | Path Should Have Permissions| /etc/myscript.sh | mode=644 |
+            | Path Should Have Permissions| /etc/myscript.sh | owner_group=root:root |
+            | Path Should Have Permissions| /etc/myscript.sh | mode=755 | owner_group=root:root |
+
+        Args:
+            path (str): Path to a file or folder to test against
+            mode (str): Mode (as an octal), .eg. 644 or 755 etc. Defaults to None
+            owner_group (str): Owner/group in the format of owner:group. Defaults to None
+
+        Returns:
+            List[str, str]: List of the actual mode and owner/group (e.g. ['644', 'root:root'])
+        """
+        return self.current.assert_linux_permissions(
+            path, mode=mode, owner_group=owner_group
+        )
+
     #
     # Service Control
     #
