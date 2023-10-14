@@ -863,7 +863,7 @@ class DeviceLibrary:
 
     @keyword("Path Should Have Permissions")
     def assert_linux_permissions(
-        self, path: str, mode: str = None, owner_group: str = None
+        self, path: str, mode: str = None, owner_group: str = None, **kwargs
     ) -> List[str]:
         """Assert the linux group/ownership and permissions (mode) on a given path
 
@@ -882,8 +882,26 @@ class DeviceLibrary:
             List[str]: List of the actual mode and owner/group (e.g. ['644', 'root:root'])
         """
         return self.current.assert_linux_permissions(
-            path, mode=mode, owner_group=owner_group
+            path, mode=mode, owner_group=owner_group, **kwargs
         )
+
+    @keyword("File Checksum Should Be Equal")
+    def assert_file_checksum(self, file: str, reference_file: str, **kwargs) -> str:
+        """Assert that two files are equal by checking their md5 checksum
+
+        Examples:
+
+        | File Checksum Should Be Equal | file=/etc/tedge/tedge.toml | reference_file=${CURDIR}/tedge-reference.toml |
+
+        Args:
+            file (str): path to file on the device
+            reference_file (str): path to the local file which will be used to compare
+                the checksum against
+
+        Returns:
+            str: checksum of the file on the device
+        """
+        return self.current.assert_file_checksum(file, reference_file, **kwargs)
 
     #
     # Service Control
@@ -996,7 +1014,9 @@ class DeviceLibrary:
         For systemd this would be a systemctl daemon-reload
         """
         if init_system == "systemd":
-            return self.current.execute_command("systemctl daemon-reload", **kwargs).stdout
+            return self.current.execute_command(
+                "systemctl daemon-reload", **kwargs
+            ).stdout
 
         raise NotImplementedError("Currently only systemd is supported")
 
