@@ -973,14 +973,18 @@ class DeviceLibrary:
         self._control_service("disable", name, init_system=init_system, **kwargs)
 
     @keyword("Service Should Be Running")
-    def service_running(self, name: str, init_system: str = "systemd", **kwargs):
-        """Assert that the service is running
+    def service_running(self, name: str, init_system: str = "systemd", **kwargs) -> int:
+        """Assert that the service is running and return the process id (PID)
 
         Args:
             name (str): Name of the service
             init_system (str): Init. system. Defaults to 'systemd'
+
+        Returns:
+            int: PID of the main service
         """
         self._control_service("is-active", name, init_system=init_system, **kwargs)
+        return self._get_service_pid(name, init_system=init_system, **kwargs)
 
     @keyword("Service Should Be Stopped")
     def service_stopping(self, name: str, init_system: str = "systemd", **kwargs):
@@ -1028,7 +1032,7 @@ class DeviceLibrary:
             name (str): Name of the service
             init_system (str): Init. system. Defaults to 'systemd'
         """
-        return self._get_service_property(name, init_system=init_system, **kwargs)
+        return self._get_service_pid(name, init_system=init_system, **kwargs)
 
     def _control_service(
         self,
@@ -1056,7 +1060,7 @@ class DeviceLibrary:
 
         self.current.assert_command(command, exp_exit_code=exp_exit_code, **kwargs)
 
-    def _get_service_property(
+    def _get_service_pid(
         self,
         name: str,
         init_system: str = "systemd",
