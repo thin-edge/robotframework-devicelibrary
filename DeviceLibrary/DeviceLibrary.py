@@ -1020,6 +1020,16 @@ class DeviceLibrary:
 
         raise NotImplementedError("Currently only systemd is supported")
 
+    @keyword("Get Service PID")
+    def get_service_main_pid(self, name: str, init_system: str = "systemd", **kwargs):
+        """Get the Main PID of a service
+
+        Args:
+            name (str): Name of the service
+            init_system (str): Init. system. Defaults to 'systemd'
+        """
+        return self._get_service_property(name, init_system=init_system, **kwargs)
+
     def _control_service(
         self,
         action: str,
@@ -1045,6 +1055,32 @@ class DeviceLibrary:
             raise NotImplementedError("Currently only systemd is supported")
 
         self.current.assert_command(command, exp_exit_code=exp_exit_code, **kwargs)
+
+    def _get_service_property(
+        self,
+        name: str,
+        init_system: str = "systemd",
+        **kwargs,
+    ):
+        """Check if a file does not exists
+
+        Args:
+            name (str): Name of the service
+            exp_exit_code (Union[int,str], optional): Expected exit code. Defaults to 0. Use '!0' if you want
+                to match against a non-zero exit code.
+            init_system (str): Init. system. Defaults to 'systemd'
+
+        """
+        init_system = init_system.lower()
+
+        if init_system == "systemd":
+            command = f"systemctl show --property MainPID --value {name}"
+        else:
+            raise NotImplementedError("Currently only systemd is supported")
+
+        result = self.current.assert_command(command, **kwargs)
+        pid = int(result.stdout.strip())
+        return pid
 
     #
     # Processes
