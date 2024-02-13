@@ -218,10 +218,13 @@ class DeviceLibrary:
             Union[int,float]: Number of seconds since unix epoch
         """
         if milliseconds:
-            nano_seconds = int(
-                self.execute_command(r"date +%s%N", stdout=True, stderr=False)
+            nano_seconds = self.execute_command(
+                r"date +%s%N", stdout=True, stderr=False
             )
-            return float(nano_seconds / 1_000_000_000)
+            # `date` in busybox 1.35.0 in Yocto Kirkstone doesn't support nanoseconds and leaves the
+            # nanosecond specifier in the output
+            if "%N" not in nano_seconds:
+                return float(int(nano_seconds) / 1_000_000_000)
 
         return int(self.execute_command(r"date +%s", stdout=True, stderr=False))
 
