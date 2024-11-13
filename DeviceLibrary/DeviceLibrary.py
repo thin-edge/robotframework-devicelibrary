@@ -864,6 +864,28 @@ class DeviceLibrary:
         """
         self.current.assert_command(f"! test -f '{path}'", **kwargs)
 
+    @keyword("Symlink Should Exist")
+    def assert_symlink_exists(self, path: str, target_exists: bool = True, **kwargs):
+        """Check if a symlink exists
+
+        Args:
+            path (str): Symlink path
+            target_exists (bool): Check if the target file/directory exists. Defaults to True
+        """
+        self.current.assert_command(f"test -L '{path}'", **kwargs)
+        if target_exists:
+            self.current.assert_command(f"test -e '{path}'", **kwargs)
+
+
+    @keyword("Symlink Should Not Exist")
+    def assert_not_symlink_exists(self, path: str, **kwargs):
+        """Check if a symlink does not exists
+
+        Args:
+            path (str): Symlink path
+        """
+        self.current.assert_command(f"! test -L '{path}'", **kwargs)
+
     @keyword("Path Should Have Permissions")
     def assert_linux_permissions(
         self, path: str, mode: str = None, owner_group: str = None, **kwargs
