@@ -876,7 +876,6 @@ class DeviceLibrary:
         if target_exists:
             self.current.assert_command(f"test -e '{path}'", **kwargs)
 
-
     @keyword("Symlink Should Not Exist")
     def assert_not_symlink_exists(self, path: str, **kwargs):
         """Check if a symlink does not exists
