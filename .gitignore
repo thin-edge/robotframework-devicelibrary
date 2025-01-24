@@ -7,6 +7,7 @@ wordlist.txt
 results/
 .vscode/
 launch.json
+.venv/
 DeviceLibrary/_version.py
 log.html
 report.html
