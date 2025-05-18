@@ -253,6 +253,7 @@ class DeviceLibrary:
         cleanup: bool = None,
         adapter: str = None,
         env_file=".env",
+        **adaptor_config,
     ) -> str:
         """Create a device to use for testing
 
@@ -264,6 +265,8 @@ class DeviceLibrary:
             skip_bootstrap (bool, optional): Don't run the bootstrap script. Defaults to None
             cleanup (bool, optional): Should the cleanup be run or not. Defaults to None
             adapter (str, optional): Type of adapter to use, e.g. ssh, docker etc. Defaults to None
+            **adaptor_config: Additional configuration that is passed to the adapter. It will override
+                any existing settings.
 
         Returns:
             str: Device serial number
@@ -276,6 +279,17 @@ class DeviceLibrary:
             )
             or {}
         )
+
+        # Allow user to override some of the default settings when calling the setup
+        # These values are passed to the adapter config
+        if adaptor_config:
+            logger.info(
+                "Using additional configuration provided as kwargs. %s", adaptor_config
+            )
+            config = {
+                **config,
+                **adaptor_config,
+            }
 
         should_cleanup = is_truthy(
             cleanup if cleanup is not None else not config.pop("skip_cleanup", False)
