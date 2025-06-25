@@ -304,8 +304,11 @@ class DeviceLibrary:
         bootstrap_script = config.pop("bootstrap_script", self.__bootstrap_script)
 
         if adapter_type == "docker":
+            docker_device_factory = None
             try:
                 from device_test_core.docker.factory import DockerDeviceFactory
+
+                docker_device_factory = DockerDeviceFactory()
             except (ImportError, AttributeError):
                 raise_adapter_error(adapter_type)
 
@@ -334,7 +337,10 @@ class DeviceLibrary:
                         if hostname and ip_address:
                             extra_hosts[hostname] = ip_address
 
-            device = DockerDeviceFactory().create_device(
+            if docker_device_factory is None:
+                raise Exception(f"Could not import adapter. type={adapter_type}")
+
+            device = docker_device_factory.create_device(
                 device_sn,
                 image=config.pop("image", self.__image),
                 env_file=env_file,
@@ -342,16 +348,22 @@ class DeviceLibrary:
                 **config,
             )
         elif adapter_type == "ssh":
+            ssh_device_factory = None
             try:
                 from device_test_core.ssh.factory import SSHDeviceFactory
+
+                ssh_device_factory = SSHDeviceFactory()
             except (ImportError, AttributeError):
                 raise_adapter_error(adapter_type)
+
+            if ssh_device_factory is None:
+                raise Exception(f"Could not import adapter. type={adapter_type}")
 
             device_sn = generate_custom_name()
             env = {
                 "DEVICE_ID": device_sn,
             }
-            device = SSHDeviceFactory().create_device(
+            device = ssh_device_factory.create_device(
                 device_sn,
                 env_file=env_file,
                 env=env,
@@ -366,8 +378,11 @@ class DeviceLibrary:
             else:
                 skip_bootstrap = True
         elif adapter_type == "local":
+            local_device_factory = None
             try:
                 from device_test_core.local.factory import LocalDeviceFactory
+
+                local_device_factory = LocalDeviceFactory()
             except (ImportError, AttributeError):
                 raise_adapter_error(adapter_type)
 
@@ -375,7 +390,11 @@ class DeviceLibrary:
             env = {
                 "DEVICE_ID": device_sn,
             }
-            device = LocalDeviceFactory().create_device(
+
+            if local_device_factory is None:
+                raise Exception(f"Could not import adapter. type={adapter_type}")
+
+            device = local_device_factory.create_device(
                 device_sn,
                 env_file=env_file,
                 env=env,
