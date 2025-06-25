@@ -328,10 +328,11 @@ class DeviceLibrary:
 
                 for key in hosts:
                     entry = env_values.get(key)
-                    hostname, _, ip_address = entry.partition("=")
-                    hostname = re.sub(r"^\w+://", "", hostname)
-                    if hostname and ip_address:
-                        extra_hosts[hostname] = ip_address
+                    if entry:
+                        hostname, _, ip_address = entry.partition("=")
+                        hostname = re.sub(r"^\w+://", "", hostname)
+                        if hostname and ip_address:
+                            extra_hosts[hostname] = ip_address
 
             device = DockerDeviceFactory().create_device(
                 device_sn,
