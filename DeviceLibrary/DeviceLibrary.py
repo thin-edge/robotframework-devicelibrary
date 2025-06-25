@@ -19,6 +19,7 @@ from robot.libraries.BuiltIn import BuiltIn
 from robot.api.deco import keyword, library
 from robot.utils import is_truthy
 from device_test_core.adapter import DeviceAdapter
+from device_test_core import timestamp
 
 from device_test_core.retry import configure_retry_on_members
 from device_test_core.utils import generate_name
@@ -583,14 +584,14 @@ class DeviceLibrary:
     def _get_logs(
         self,
         name: Optional[str] = None,
-        date_from: Optional[Union[datetime, float]] = None,
+        date_from: Optional[timestamp.Timestamp] = None,
         show=True,
     ):
         """Get device logs
 
         Args:
             name (str, optional): name. Defaults to current device.
-            date_from (Union[datetime, float]: Only include logs starting from a specific datetime
+            date_from (timestamp.Timestamp, optional): Only include logs starting from a specific datetime
                 Accepts either datetime object, or a float (linux timestamp) in seconds.
             show (boolean, optional): Show/Display the log entries
 
@@ -600,8 +601,9 @@ class DeviceLibrary:
         Raises:
             Exception: Unknown device
         """
+        date_from_parsed = timestamp.parse_timestamp(date_from) if date_from else None
         device = self.get_device(name)
-        log_output = device.get_logs(since=date_from)
+        log_output = device.get_logs(since=date_from_parsed)
 
         if show:
             for line in log_output:
@@ -613,14 +615,14 @@ class DeviceLibrary:
     def get_logs(
         self,
         name: Optional[str] = None,
-        date_from: Optional[Union[datetime, float]] = None,
+        date_from: Optional[timestamp.Timestamp] = None,
         show=True,
     ):
         """Get device logs
 
         Args:
             name (str, optional): name. Defaults to current device.
-            date_from (Union[datetime, float]: Only include logs starting from a specific datetime
+            date_from (Union[timestamp.Timestamp]: Only include logs starting from a specific datetime
                 Accepts either datetime object, or a float (linux timestamp) in seconds.
             show (boolean, optional): Show/Display the log entries
 
@@ -637,7 +639,7 @@ class DeviceLibrary:
         self,
         text: Optional[str] = None,
         pattern: Optional[str] = None,
-        date_from: Optional[Union[datetime, float]] = None,
+        date_from: Optional[timestamp.Timestamp] = None,
         min_matches: int = 1,
         max_matches: Optional[int] = None,
         name: Optional[str] = None,
@@ -664,7 +666,7 @@ class DeviceLibrary:
             max_matches (int, optional): Maximum number of expected line matches (inclusive).
                 Defaults to None. Assertion will be ignored if set to None.
 
-            date_from (Union[datetime, float], optional): Only include log entires from a given
+            date_from (timestamp.Timestamp, optional): Only include log entires from a given
                 datetime/timestamp. As a datetime object or a float (in seconds, e.g. linux timestamp).
 
             name (str, optional): Name of the device to get the logs from.
@@ -710,7 +712,7 @@ class DeviceLibrary:
         self,
         text: Optional[str] = None,
         pattern: Optional[str] = None,
-        date_from: Optional[Union[datetime, float]] = None,
+        date_from: Optional[timestamp.Timestamp] = None,
         name: Optional[str] = None,
     ):
         """Assert that the logs should NOT contain the present of a given text or pattern (regex).
@@ -728,7 +730,7 @@ class DeviceLibrary:
             pattern (str, optional): Assert that a line should match a given regular expression
                 (case insensitive). It must match the entire line.
 
-            date_from (Union[datetime, float], optional): Only include log entires from a given
+            date_from (timestamp.Timestamp, optional): Only include log entires from a given
                 datetime/timestamp. As a datetime object or a float (in seconds, e.g. linux timestamp).
 
             name (str, optional): Name of the device to get the logs from.
