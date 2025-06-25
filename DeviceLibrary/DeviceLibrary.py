@@ -84,7 +84,7 @@ class DeviceLibrary:
     # Constructor
     def __init__(
         self,
-        adapter: str = None,
+        adapter: Optional[str] = None,
         image: str = DEFAULT_IMAGE,
         bootstrap_script: str = DEFAULT_BOOTSTRAP_SCRIPT,
     ):
@@ -93,9 +93,9 @@ class DeviceLibrary:
         self.__image = image
         self.adapter = adapter
         self.__bootstrap_script = bootstrap_script
-        self.current: DeviceAdapter = None
-        self.test_start_time = None
-        self.suite_start_time = None
+        self.current: Optional[DeviceAdapter] = None
+        self.test_start_time: Optional[datetime] = None
+        self.suite_start_time: Optional[datetime] = None
 
         # load any settings from dotenv file
         dotenv.load_dotenv(".env")
@@ -194,12 +194,12 @@ class DeviceLibrary:
         return generate_custom_name(prefix)
 
     @keyword("Get Test Start Time")
-    def get_test_start_time(self) -> datetime:
+    def get_test_start_time(self) -> Optional[datetime]:
         """Get the time that the test was started"""
         return self.test_start_time
 
     @keyword("Get Suite Start Time")
-    def get_suite_start_time(self) -> datetime:
+    def get_suite_start_time(self) -> Optional[datetime]:
         """Get the time that the suite was started"""
         return self.suite_start_time
 
@@ -249,9 +249,9 @@ class DeviceLibrary:
     @keyword("Setup")
     def setup(
         self,
-        skip_bootstrap: bool = None,
-        cleanup: bool = None,
-        adapter: str = None,
+        skip_bootstrap: Optional[bool] = None,
+        cleanup: Optional[bool] = None,
+        adapter: Optional[str] = None,
         env_file=".env",
         **adaptor_config,
     ) -> str:
@@ -415,7 +415,7 @@ class DeviceLibrary:
         return device_sn
 
     @keyword("Get Setup Time")
-    def get_setup_time(self, name: str = None):
+    def get_setup_time(self, name: Optional[str] = None):
         """Get setup time of a device (in the local device time)"""
         device = self.devices.get(name) if name else self.current
         return self.devices_setup_times.get(device.get_id())
@@ -438,7 +438,7 @@ class DeviceLibrary:
         ignore_exit_code: bool = False,
         log_output: bool = True,
         strip: bool = False,
-        sudo: bool = None,
+        sudo: Optional[bool] = None,
         stdout: bool = True,
         stderr: bool = False,
         device_name: Optional[str] = None, 
@@ -551,7 +551,7 @@ class DeviceLibrary:
         return device
 
     def _get_logs(
-        self, name: str = None, date_from: Union[datetime, float] = None, show=True
+        self, name: Optional[str] = None, date_from: Optional[Union[datetime, float]] = None, show=True
     ):
         """Get device logs
 
@@ -578,7 +578,7 @@ class DeviceLibrary:
 
     @keyword("Get Logs")
     def get_logs(
-        self, name: str = None, date_from: Union[datetime, float] = None, show=True
+        self, name: Optional[str] = None, date_from: Optional[Union[datetime, float]] = None, show=True
     ):
         """Get device logs
 
@@ -599,12 +599,12 @@ class DeviceLibrary:
     @keyword("Logs Should Contain")
     def assert_log_contains(
         self,
-        text: str = None,
-        pattern: str = None,
-        date_from: Union[datetime, float] = None,
+        text: Optional[str] = None,
+        pattern: Optional[str] = None,
+        date_from: Optional[Union[datetime, float]] = None,
         min_matches: int = 1,
-        max_matches: int = None,
-        name: str = None,
+        max_matches: Optional[int] = None,
+        name: Optional[str] = None,
     ) -> List[str]:
         """Assert that the logs should contain the present of a given text or pattern (regex).
 
@@ -672,10 +672,10 @@ class DeviceLibrary:
     @keyword("Logs Should Not Contain")
     def assert_log_not_contains(
         self,
-        text: str = None,
-        pattern: str = None,
-        date_from: Union[datetime, float] = None,
-        name: str = None,
+        text: Optional[str] = None,
+        pattern: Optional[str] = None,
+        date_from: Optional[Union[datetime, float]] = None,
+        name: Optional[str] = None,
     ):
         """Assert that the logs should NOT contain the present of a given text or pattern (regex).
 
@@ -917,7 +917,7 @@ class DeviceLibrary:
 
     @keyword("Path Should Have Permissions")
     def assert_linux_permissions(
-        self, path: str, mode: str = None, owner_group: str = None, **kwargs
+        self, path: str, mode: Optional[str] = None, owner_group: Optional[str] = None, **kwargs
     ) -> List[str]:
         """Assert the linux group/ownership and permissions (mode) on a given path
 
@@ -1204,7 +1204,7 @@ class DeviceLibrary:
 
     @keyword("Should Match Processes")
     def assert_process_count(
-        self, pattern: str, minimum: int = 1, maximum: int = None, **kwargs
+        self, pattern: str, minimum: int = 1, maximum: Optional[int] = None, **kwargs
     ) -> int:
         """Check how many processes are running which match a given pattern
 
