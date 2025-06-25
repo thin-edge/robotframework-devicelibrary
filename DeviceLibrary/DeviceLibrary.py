@@ -6,7 +6,7 @@ It currently support the creation of Docker devices only
 """
 
 import logging
-from typing import Any, List, Union
+from typing import Any, Dict, List, Union, Optional
 from datetime import datetime, timezone
 import re
 import os
@@ -88,7 +88,7 @@ class DeviceLibrary:
         image: str = DEFAULT_IMAGE,
         bootstrap_script: str = DEFAULT_BOOTSTRAP_SCRIPT,
     ):
-        self.devices = {}
+        self.devices: Dict[str, DeviceAdapter] = {}
         self.devices_setup_times = {}
         self.__image = image
         self.adapter = adapter
@@ -441,6 +441,7 @@ class DeviceLibrary:
         sudo: bool = None,
         stdout: bool = True,
         stderr: bool = False,
+        device_name: Optional[str] = None, 
         **kwargs,
     ) -> str:
         """Execute a command on the device
@@ -470,7 +471,8 @@ class DeviceLibrary:
         if sudo is not None:
             kwargs["sudo"] = is_truthy(sudo)
 
-        result = self.current.assert_command(
+        device = self.get_device(device_name)
+        result = device.assert_command(
             cmd,
             exp_exit_code=exp_exit_code,
             log_output=log_output,
@@ -528,6 +530,26 @@ class DeviceLibrary:
             except Exception as ex:
                 logger.warning("Error during device cleanup. %s", ex)
 
+    def get_device(self, name: Optional[str] = None) -> DeviceAdapter:
+        """Get the current device, or the device with the given name
+
+        Args:
+            name (Optional[str], optional): Device name. Defaults to current device if not defined.
+
+        Raises:
+            KeyError: Device not found
+
+        Returns:
+            DeviceAdapter: Device
+        """
+        device = self.current
+        if name:
+            if name not in self.devices:
+                raise KeyError(f"Could not find device. {name}")
+
+            device = self.devices.get(name)
+        return device
+
     def _get_logs(
         self, name: str = None, date_from: Union[datetime, float] = None, show=True
     ):
@@ -545,13 +567,7 @@ class DeviceLibrary:
         Raises:
             Exception: Unknown device
         """
-        device = self.current
-        if name:
-            if name not in self.devices:
-                raise Exception(f"Could not find device. {name}")
-
-            device = self.devices.get(name)
-
+        device = self._get_device(name)
         log_output = device.get_logs(since=date_from)
 
         if show:
