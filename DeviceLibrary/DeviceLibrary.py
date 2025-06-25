@@ -84,7 +84,7 @@ class DeviceLibrary:
     # Constructor
     def __init__(
         self,
-        adapter: str = None,
+        adapter: Optional[str] = None,
         image: str = DEFAULT_IMAGE,
         bootstrap_script: str = DEFAULT_BOOTSTRAP_SCRIPT,
     ):
@@ -93,9 +93,9 @@ class DeviceLibrary:
         self.__image = image
         self.adapter = adapter
         self.__bootstrap_script = bootstrap_script
-        self.current: DeviceAdapter = None
-        self.test_start_time = None
-        self.suite_start_time = None
+        self.current: Optional[DeviceAdapter] = None
+        self.test_start_time: Optional[datetime] = None
+        self.suite_start_time: Optional[datetime] = None
 
         # load any settings from dotenv file
         dotenv.load_dotenv(".env")
@@ -194,12 +194,12 @@ class DeviceLibrary:
         return generate_custom_name(prefix)
 
     @keyword("Get Test Start Time")
-    def get_test_start_time(self) -> datetime:
+    def get_test_start_time(self) -> Optional[datetime]:
         """Get the time that the test was started"""
         return self.test_start_time
 
     @keyword("Get Suite Start Time")
-    def get_suite_start_time(self) -> datetime:
+    def get_suite_start_time(self) -> Optional[datetime]:
         """Get the time that the suite was started"""
         return self.suite_start_time
 
@@ -249,9 +249,9 @@ class DeviceLibrary:
     @keyword("Setup")
     def setup(
         self,
-        skip_bootstrap: bool = None,
-        cleanup: bool = None,
-        adapter: str = None,
+        skip_bootstrap: Optional[bool] = None,
+        cleanup: Optional[bool] = None,
+        adapter: Optional[str] = None,
         env_file=".env",
         **adaptor_config,
     ) -> str:
@@ -304,8 +304,11 @@ class DeviceLibrary:
         bootstrap_script = config.pop("bootstrap_script", self.__bootstrap_script)
 
         if adapter_type == "docker":
+            docker_device_factory = None
             try:
                 from device_test_core.docker.factory import DockerDeviceFactory
+
+                docker_device_factory = DockerDeviceFactory()
             except (ImportError, AttributeError):
                 raise_adapter_error(adapter_type)
 
@@ -328,12 +331,16 @@ class DeviceLibrary:
 
                 for key in hosts:
                     entry = env_values.get(key)
-                    hostname, _, ip_address = entry.partition("=")
-                    hostname = re.sub(r"^\w+://", "", hostname)
-                    if hostname and ip_address:
-                        extra_hosts[hostname] = ip_address
+                    if entry:
+                        hostname, _, ip_address = entry.partition("=")
+                        hostname = re.sub(r"^\w+://", "", hostname)
+                        if hostname and ip_address:
+                            extra_hosts[hostname] = ip_address
 
-            device = DockerDeviceFactory().create_device(
+            if docker_device_factory is None:
+                raise Exception(f"Could not import adapter. type={adapter_type}")
+
+            device = docker_device_factory.create_device(
                 device_sn,
                 image=config.pop("image", self.__image),
                 env_file=env_file,
@@ -341,16 +348,22 @@ class DeviceLibrary:
                 **config,
             )
         elif adapter_type == "ssh":
+            ssh_device_factory = None
             try:
                 from device_test_core.ssh.factory import SSHDeviceFactory
+
+                ssh_device_factory = SSHDeviceFactory()
             except (ImportError, AttributeError):
                 raise_adapter_error(adapter_type)
+
+            if ssh_device_factory is None:
+                raise Exception(f"Could not import adapter. type={adapter_type}")
 
             device_sn = generate_custom_name()
             env = {
                 "DEVICE_ID": device_sn,
             }
-            device = SSHDeviceFactory().create_device(
+            device = ssh_device_factory.create_device(
                 device_sn,
                 env_file=env_file,
                 env=env,
@@ -365,8 +378,11 @@ class DeviceLibrary:
             else:
                 skip_bootstrap = True
         elif adapter_type == "local":
+            local_device_factory = None
             try:
                 from device_test_core.local.factory import LocalDeviceFactory
+
+                local_device_factory = LocalDeviceFactory()
             except (ImportError, AttributeError):
                 raise_adapter_error(adapter_type)
 
@@ -374,7 +390,11 @@ class DeviceLibrary:
             env = {
                 "DEVICE_ID": device_sn,
             }
-            device = LocalDeviceFactory().create_device(
+
+            if local_device_factory is None:
+                raise Exception(f"Could not import adapter. type={adapter_type}")
+
+            device = local_device_factory.create_device(
                 device_sn,
                 env_file=env_file,
                 env=env,
@@ -415,9 +435,9 @@ class DeviceLibrary:
         return device_sn
 
     @keyword("Get Setup Time")
-    def get_setup_time(self, name: str = None):
+    def get_setup_time(self, name: Optional[str] = None):
         """Get setup time of a device (in the local device time)"""
-        device = self.devices.get(name) if name else self.current
+        device = self.get_device(name)
         return self.devices_setup_times.get(device.get_id())
 
     @keyword("Set Device Context")
@@ -425,25 +445,23 @@ class DeviceLibrary:
         """Set the device context which controls the device the other
         keywords send the commands to
         """
-        assert (
-            name in self.devices
-        ), f"Name not found existing device adapters: {list(self.devices.keys())}"
-        self.current = self.devices.get(name, self.current)
+        device = self.get_device(name)
+        self.current = device
 
     @keyword("Execute Command")
     def execute_command(
         self,
         cmd: str,
-        exp_exit_code: Union[int, str] = 0,
+        exp_exit_code: Optional[Union[int, str]] = 0,
         ignore_exit_code: bool = False,
         log_output: bool = True,
         strip: bool = False,
-        sudo: bool = None,
+        sudo: Optional[bool] = None,
         stdout: bool = True,
         stderr: bool = False,
-        device_name: Optional[str] = None, 
+        device_name: Optional[str] = None,
         **kwargs,
-    ) -> str:
+    ) -> Any:
         """Execute a command on the device
 
         Args:
@@ -454,6 +472,7 @@ class DeviceLibrary:
             sudo (bool, optional): Run command using sudo. Defaults to None.
             stdout (bool, optional): Include stdout in the response. Defaults to True
             stderr (bool, optional): Include stderr in the response. Defaults to False
+            device_name (optional, str): Device
 
         Returns:
             Any: Result. If stdout and stderr are provided then a tuple of (stdout, stderr) is returned, otherwise
@@ -493,33 +512,42 @@ class DeviceLibrary:
         return tuple(output)
 
     @keyword("Get IP Address")
-    def get_ipaddress(self) -> str:
+    def get_ipaddress(self, device_name: Optional[str] = None) -> str:
         """Return the ip address of the current device
+
+        Args:
+            device_name (optional, str): Device
 
         Returns:
             str: IP address. An empty string is returned if it does not have an ip address
         """
-        return self.current.get_ipaddress() or ""
+        return self.get_device(device_name).get_ipaddress() or ""
 
     @keyword("Disconnect From Network")
-    def disconnect_network(self):
+    def disconnect_network(self, device_name: Optional[str] = None):
         """Disconnect the device from the network.
 
         This command only does something if the underlying adapter supports it.
 
         For example, this is not possible with the SSH adapter.
+
+        Args:
+            device_name (optional, str): Device
         """
-        self.current.disconnect_network()
+        self.get_device(device_name).disconnect_network()
 
     @keyword("Connect To Network")
-    def connect_network(self):
+    def connect_network(self, device_name: Optional[str] = None):
         """Connect device to the network.
 
         This command only does something if the underlying adapter supports it.
         For example, this is not possible with the SSH adapter.
 
+        Args:
+            device_name (optional, str): Device
+
         """
-        self.current.connect_network()
+        self.get_device(device_name).connect_network()
 
     def teardown(self):
         """Stop and cleanup the device"""
@@ -537,21 +565,26 @@ class DeviceLibrary:
             name (Optional[str], optional): Device name. Defaults to current device if not defined.
 
         Raises:
-            KeyError: Device not found
+            AssertionError: Device not found
 
         Returns:
             DeviceAdapter: Device
         """
         device = self.current
         if name:
-            if name not in self.devices:
-                raise KeyError(f"Could not find device. {name}")
+            assert (
+                name in self.devices
+            ), f"Name not found existing device adapters: {list(self.devices.keys())}"
 
             device = self.devices.get(name)
+        assert device
         return device
 
     def _get_logs(
-        self, name: str = None, date_from: Union[datetime, float] = None, show=True
+        self,
+        name: Optional[str] = None,
+        date_from: Optional[Union[datetime, float]] = None,
+        show=True,
     ):
         """Get device logs
 
@@ -567,7 +600,7 @@ class DeviceLibrary:
         Raises:
             Exception: Unknown device
         """
-        device = self._get_device(name)
+        device = self.get_device(name)
         log_output = device.get_logs(since=date_from)
 
         if show:
@@ -578,7 +611,10 @@ class DeviceLibrary:
 
     @keyword("Get Logs")
     def get_logs(
-        self, name: str = None, date_from: Union[datetime, float] = None, show=True
+        self,
+        name: Optional[str] = None,
+        date_from: Optional[Union[datetime, float]] = None,
+        show=True,
     ):
         """Get device logs
 
@@ -599,12 +635,12 @@ class DeviceLibrary:
     @keyword("Logs Should Contain")
     def assert_log_contains(
         self,
-        text: str = None,
-        pattern: str = None,
-        date_from: Union[datetime, float] = None,
+        text: Optional[str] = None,
+        pattern: Optional[str] = None,
+        date_from: Optional[Union[datetime, float]] = None,
         min_matches: int = 1,
-        max_matches: int = None,
-        name: str = None,
+        max_matches: Optional[int] = None,
+        name: Optional[str] = None,
     ) -> List[str]:
         """Assert that the logs should contain the present of a given text or pattern (regex).
 
@@ -672,10 +708,10 @@ class DeviceLibrary:
     @keyword("Logs Should Not Contain")
     def assert_log_not_contains(
         self,
-        text: str = None,
-        pattern: str = None,
-        date_from: Union[datetime, float] = None,
-        name: str = None,
+        text: Optional[str] = None,
+        pattern: Optional[str] = None,
+        date_from: Optional[Union[datetime, float]] = None,
+        name: Optional[str] = None,
     ):
         """Assert that the logs should NOT contain the present of a given text or pattern (regex).
 
@@ -708,7 +744,7 @@ class DeviceLibrary:
         )
 
     @keyword("Transfer To Device")
-    def transfer_to_device(self, src: str, dst: str):
+    def transfer_to_device(self, src: str, dst: str, device_name: Optional[str] = None):
         """Transfer files to a device
 
         Examples:
@@ -720,8 +756,9 @@ class DeviceLibrary:
         Args:
             src (str): Source file, folder or pattern
             dst (str): Destination path to copy to the files to
+            device_name (optional, str): Device
         """
-        self.current.copy_to(src, dst)
+        self.get_device(device_name).copy_to(src, dst)
 
     # ----------------------------------------------------
     # Operation system
@@ -730,16 +767,19 @@ class DeviceLibrary:
     # APT
     #
     @keyword("Update APT Cache")
-    def apt_update(self) -> str:
+    def apt_update(self, device_name: Optional[str] = None) -> str:
         """Update APT package cache
+
+        Args:
+            device_name (optional, str): Device
 
         Returns:
             str: Command output
         """
-        return self.current.assert_command("apt-get update").stdout
+        return self.get_device(device_name).assert_command("apt-get update").stdout
 
     @keyword("Install Package Using APT")
-    def apt_install(self, *packages: str):
+    def apt_install(self, *packages: str, device_name: Optional[str] = None):
         """Install a list of packages via APT
 
         You can specify specify to install the latest available, or use
@@ -747,45 +787,62 @@ class DeviceLibrary:
 
         Args:
             *packages (str): packages to be installed. Version is optional, but when
-            provided it should be in the format of 'mypackage=1.0.0'
+                provided it should be in the format of 'mypackage=1.0.0'
+            device_name (optional, str): Device
 
         Returns:
             str: Command output
         """
-        return self.current.assert_command(
-            "apt-get -y install " + " ".join(packages)
-        ).stdout
+        return (
+            self.get_device(device_name)
+            .assert_command("apt-get -y install " + " ".join(packages))
+            .stdout
+        )
 
     @keyword("Remove Package Using APT")
-    def apt_remove(self, *packages: str) -> str:
+    def apt_remove(self, *packages: str, device_name: Optional[str] = None) -> str:
         """Remove a package via APT
+
+        Args:
+            device_name (optional, str): Device
 
         Returns:
             str: Command output
         """
-        return self.current.assert_command(
-            "apt-get -y remove " + " ".join(packages)
-        ).stdout
+        return (
+            self.get_device(device_name)
+            .assert_command("apt-get -y remove " + " ".join(packages))
+            .stdout
+        )
 
     @keyword("Purge Package Using APT")
-    def apt_purge(self, *packages: str) -> str:
+    def apt_purge(self, *packages: str, device_name: Optional[str] = None) -> str:
         """Purge a package (and its configuration) using APT
 
         Args:
             *packages (str): packages to be installed
+            device_name (optional, str): Device
 
         Returns:
             str: Command output
         """
-        return self.current.assert_command(
-            "apt-get -y remove " + " ".join(packages)
-        ).stdout
+        return (
+            self.get_device(device_name)
+            .assert_command("apt-get -y remove " + " ".join(packages))
+            .stdout
+        )
 
     #
     # Files/folders
     #
     @keyword("Directory Should Be Empty")
-    def assert_directory_empty(self, path: str, must_exist: bool = False, **kwargs):
+    def assert_directory_empty(
+        self,
+        path: str,
+        must_exist: bool = False,
+        device_name: Optional[str] = None,
+        **kwargs,
+    ):
         """Check if a directory is empty.
 
         You can define if the check should fail if the folder does not exist or not.
@@ -794,9 +851,10 @@ class DeviceLibrary:
             path (str): Directory path
             must_exist(bool, optional): Fail if the directory does not exist.
                 Defaults to False.
+            device_name (optional, str): Device
         """
         if must_exist:
-            self.current.assert_command(
+            self.get_device(device_name).assert_command(
                 f"""
                 [ -d '{path}' ] && [ -z "$(ls -A '{path}')" ]
                 """.strip(),
@@ -804,7 +862,7 @@ class DeviceLibrary:
             )
         else:
             # Don't fail if the folder does not exist, just count the contents
-            self.current.assert_command(
+            self.get_device(device_name).assert_command(
                 f"""
                 [ -z "$(ls -A '{path}' 2>/dev/null || true)" ]
                 """.strip(),
@@ -813,19 +871,30 @@ class DeviceLibrary:
 
     @keyword("List Directories in Directory")
     def get_directories_in_directory(
-        self, path: str, must_exist: bool = False, **kwargs
+        self,
+        path: str,
+        must_exist: bool = False,
+        device_name: Optional[str] = None,
+        **kwargs,
     ) -> List[str]:
         """List the directories in a given directory
+
+        Args:
+            path (str): Directory path
+            must_exist (bool, optional): Should an error be thrown if the directory
+                does not exist. Defaults to False.
+            device_name (optional, str): Device
 
         Returns:
             List[str]: List of directories
         """
+        device = self.get_device(device_name)
         if must_exist:
-            result = self.current.assert_command(
+            result = device.assert_command(
                 f"find '{path}' -maxdepth 1 -mindepth 1 -type d", **kwargs
             )
         else:
-            result = self.current.assert_command(
+            result = device.assert_command(
                 f"find '{path}' -maxdepth 1 -mindepth 1 -type d 2>/dev/null || true",
                 **kwargs,
             )
@@ -833,25 +902,37 @@ class DeviceLibrary:
         return result.stdout.splitlines()
 
     @keyword("Directory Should Not Have Sub Directories")
-    def assert_directories_count(self, path: str, must_exist: bool = False, **kwargs):
+    def assert_directories_count(
+        self,
+        path: str,
+        must_exist: bool = False,
+        device_name: Optional[str] = None,
+        **kwargs,
+    ):
         """Check if directory has no sub directories
 
         Args:
             path (str): Directory path
             must_exist (bool, optional): Should an error be thrown if the directory
                 does not exist. Defaults to False.
+            device_name (optional, str): Device
         """
-        dirs = self.get_directories_in_directory(path, must_exist, **kwargs)
+        dirs = self.get_directories_in_directory(
+            path, must_exist, device_name=device_name, **kwargs
+        )
         assert len(dirs) == 0
 
     @keyword("Directory Should Not Be Empty")
-    def assert_directory_not_empty(self, path: str, **kwargs):
+    def assert_directory_not_empty(
+        self, path: str, device_name: Optional[str] = None, **kwargs
+    ):
         """Check if a directory is empty
 
         Args:
             path (str): Directory path
+            device_name (optional, str): Device
         """
-        self.current.assert_command(
+        self.get_device(device_name).assert_command(
             f"""
             [ -d '{path}' ] && [ -n "$(ls -A '{path}')" ]
         """.strip(),
@@ -859,65 +940,90 @@ class DeviceLibrary:
         )
 
     @keyword("Directory Should Exist")
-    def assert_directory(self, path: str, **kwargs):
+    def assert_directory(self, path: str, device_name: Optional[str] = None, **kwargs):
         """Check if a directory exists
 
         Args:
             path (str): Directory path
         """
-        self.current.assert_command(f"test -d '{path}'", **kwargs)
+        self.get_device(device_name).assert_command(f"test -d '{path}'", **kwargs)
 
     @keyword("Directory Should Not Exist")
-    def assert_not_directory(self, path: str, **kwargs):
+    def assert_not_directory(
+        self, path: str, device_name: Optional[str] = None, **kwargs
+    ):
         """Check if a directory does not exists
 
         Args:
             path (str): Directory path
+            device_name (optional, str): Device
         """
-        self.current.assert_command(f"! test -d '{path}'", **kwargs)
+        self.get_device(device_name).assert_command(f"! test -d '{path}'", **kwargs)
 
     @keyword("File Should Exist")
-    def assert_file_exists(self, path: str, **kwargs):
+    def assert_file_exists(
+        self, path: str, device_name: Optional[str] = None, **kwargs
+    ):
         """Check if a file exists
 
         Args:
             path (str): File path
+            device_name (optional, str): Device
         """
-        self.current.assert_command(f"test -f '{path}'", **kwargs)
+        self.get_device(device_name).assert_command(f"test -f '{path}'", **kwargs)
 
     @keyword("File Should Not Exist")
-    def assert_not_file_exists(self, path: str, **kwargs):
+    def assert_not_file_exists(
+        self, path: str, device_name: Optional[str] = None, **kwargs
+    ):
         """Check if a file does not exists
 
         Args:
             path (str): File path
+            device_name (optional, str): Device
         """
-        self.current.assert_command(f"! test -f '{path}'", **kwargs)
+        self.get_device(device_name).assert_command(f"! test -f '{path}'", **kwargs)
 
     @keyword("Symlink Should Exist")
-    def assert_symlink_exists(self, path: str, target_exists: bool = True, **kwargs):
+    def assert_symlink_exists(
+        self,
+        path: str,
+        target_exists: bool = True,
+        device_name: Optional[str] = None,
+        **kwargs,
+    ):
         """Check if a symlink exists
 
         Args:
             path (str): Symlink path
             target_exists (bool): Check if the target file/directory exists. Defaults to True
+            device_name (optional, str): Device
         """
-        self.current.assert_command(f"test -L '{path}'", **kwargs)
+        device = self.get_device(device_name)
+        device.assert_command(f"test -L '{path}'", **kwargs)
         if target_exists:
-            self.current.assert_command(f"test -e '{path}'", **kwargs)
+            device.assert_command(f"test -e '{path}'", **kwargs)
 
     @keyword("Symlink Should Not Exist")
-    def assert_not_symlink_exists(self, path: str, **kwargs):
+    def assert_not_symlink_exists(
+        self, path: str, device_name: Optional[str] = None, **kwargs
+    ):
         """Check if a symlink does not exists
 
         Args:
             path (str): Symlink path
+            device_name (optional, str): Device
         """
-        self.current.assert_command(f"! test -L '{path}'", **kwargs)
+        self.get_device(device_name).assert_command(f"! test -L '{path}'", **kwargs)
 
     @keyword("Path Should Have Permissions")
     def assert_linux_permissions(
-        self, path: str, mode: str = None, owner_group: str = None, **kwargs
+        self,
+        path: str,
+        mode: Optional[str] = None,
+        owner_group: Optional[str] = None,
+        device_name: Optional[str] = None,
+        **kwargs,
     ) -> List[str]:
         """Assert the linux group/ownership and permissions (mode) on a given path
 
@@ -931,16 +1037,23 @@ class DeviceLibrary:
             path (str): Path to a file or folder to test against
             mode (str): Mode (as an octal), .eg. 644 or 755 etc. Defaults to None
             owner_group (str): Owner/group in the format of owner:group. Defaults to None
+            device_name (optional, str): Device
 
         Returns:
             List[str]: List of the actual mode and owner/group (e.g. ['644', 'root:root'])
         """
-        return self.current.assert_linux_permissions(
+        return self.get_device(device_name).assert_linux_permissions(
             path, mode=mode, owner_group=owner_group, **kwargs
         )
 
     @keyword("File Checksum Should Be Equal")
-    def assert_file_checksum(self, file: str, reference_file: str, **kwargs) -> str:
+    def assert_file_checksum(
+        self,
+        file: str,
+        reference_file: str,
+        device_name: Optional[str] = None,
+        **kwargs,
+    ) -> str:
         """Assert that two files are equal by checking their md5 checksum
 
         Examples:
@@ -951,142 +1064,251 @@ class DeviceLibrary:
             file (str): path to file on the device
             reference_file (str): path to the local file which will be used to compare
                 the checksum against
+            device_name (optional, str): Device
 
         Returns:
             str: checksum of the file on the device
         """
-        return self.current.assert_file_checksum(file, reference_file, **kwargs)
+        return self.get_device(device_name).assert_file_checksum(
+            file, reference_file, **kwargs
+        )
 
     #
     # Service Control
     #
     @keyword("Start Service")
-    def start_service(self, name: str, init_system: str = "systemd", **kwargs):
+    def start_service(
+        self,
+        name: str,
+        init_system: str = "systemd",
+        device_name: Optional[str] = None,
+        **kwargs,
+    ):
         """Start a service
 
         Args:
             name (str): Name of the service
             init_system (str): Init. system. Defaults to 'systemd'
+            device_name (optional, str): Device
         """
-        self._control_service("start", name, init_system=init_system, **kwargs)
+        self._control_service(
+            "start", name, init_system=init_system, device_name=device_name, **kwargs
+        )
 
     @keyword("Stop Service")
-    def stop_service(self, name: str, init_system: str = "systemd", **kwargs):
+    def stop_service(
+        self,
+        name: str,
+        init_system: str = "systemd",
+        device_name: Optional[str] = None,
+        **kwargs,
+    ):
         """Stop a service
 
         Args:
             name (str): Name of the service
             init_system (str): Init. system. Defaults to 'systemd'
+            device_name (optional, str): Device
         """
-        self._control_service("stop", name, init_system=init_system, **kwargs)
+        self._control_service(
+            "stop", name, init_system=init_system, device_name=device_name, **kwargs
+        )
 
     @keyword("Service Should Be Enabled")
-    def service_enabled(self, name: str, init_system: str = "systemd", **kwargs):
+    def service_enabled(
+        self,
+        name: str,
+        init_system: str = "systemd",
+        device_name: Optional[str] = None,
+        **kwargs,
+    ):
         """Assert that the service is enabled (to start on device boot)
 
         Args:
             name (str): Name of the service
             init_system (str): Init. system. Defaults to 'systemd'
+            device_name (optional, str): Device
         """
-        self._control_service("is-enabled", name, init_system=init_system, **kwargs)
+        self._control_service(
+            "is-enabled",
+            name,
+            init_system=init_system,
+            device_name=device_name,
+            **kwargs,
+        )
 
     @keyword("Enable Service")
-    def enable_service(self, name: str, init_system: str = "systemd", **kwargs):
+    def enable_service(
+        self,
+        name: str,
+        init_system: str = "systemd",
+        device_name: Optional[str] = None,
+        **kwargs,
+    ):
         """Enable a service to automatically start on boot device boot
 
         Args:
             name (str): Name of the service
             init_system (str): Init. system. Defaults to 'systemd'
+            device_name (optional, str): Device
         """
-        self._control_service("enable", name, init_system=init_system, **kwargs)
+        self._control_service(
+            "enable", name, init_system=init_system, device_name=device_name, **kwargs
+        )
 
     @keyword("Service Should Be Disabled")
-    def service_disabled(self, name: str, init_system: str = "systemd", **kwargs):
+    def service_disabled(
+        self,
+        name: str,
+        init_system: str = "systemd",
+        device_name: Optional[str] = None,
+        **kwargs,
+    ):
         """Assert that the service is enabled (to start on device boot)
 
         Args:
             name (str): Name of the service
             init_system (str): Init. system. Defaults to 'systemd'
+            device_name (optional, str): Device
         """
         self._control_service(
             "is-enabled",
             name,
             exp_exit_code="!0",
             init_system=init_system,
+            device_name=device_name,
             **kwargs,
         )
 
     @keyword("Disable Service")
-    def disable_service(self, name: str, init_system: str = "systemd", **kwargs):
+    def disable_service(
+        self,
+        name: str,
+        init_system: str = "systemd",
+        device_name: Optional[str] = None,
+        **kwargs,
+    ):
         """Disable a service so it does not automatically start on boot device boot
 
         Args:
             name (str): Name of the service
             init_system (str): Init. system. Defaults to 'systemd'
+            device_name (optional, str): Device
         """
-        self._control_service("disable", name, init_system=init_system, **kwargs)
+        self._control_service(
+            "disable", name, init_system=init_system, device_name=device_name, **kwargs
+        )
 
     @keyword("Service Should Be Running")
-    def service_running(self, name: str, init_system: str = "systemd", **kwargs) -> int:
+    def service_running(
+        self,
+        name: str,
+        init_system: str = "systemd",
+        device_name: Optional[str] = None,
+        **kwargs,
+    ) -> int:
         """Assert that the service is running and return the process id (PID)
 
         Args:
             name (str): Name of the service
             init_system (str): Init. system. Defaults to 'systemd'
+            device_name (optional, str): Device
 
         Returns:
             int: PID of the main service
         """
-        self._control_service("is-active", name, init_system=init_system, **kwargs)
-        return self._get_service_pid(name, init_system=init_system, **kwargs)
+        self._control_service(
+            "is-active",
+            name,
+            init_system=init_system,
+            device_name=device_name,
+            **kwargs,
+        )
+        return self._get_service_pid(
+            name, init_system=init_system, device_name=device_name, **kwargs
+        )
 
     @keyword("Service Should Be Stopped")
-    def service_stopping(self, name: str, init_system: str = "systemd", **kwargs):
+    def service_stopping(
+        self,
+        name: str,
+        init_system: str = "systemd",
+        device_name: Optional[str] = None,
+        **kwargs,
+    ):
         """Assert that the service is stopped
 
         Args:
             name (str): Name of the service
             init_system (str): Init. system. Defaults to 'systemd'
+            device_name (optional, str): Device
         """
         self._control_service(
             "is-active",
             name,
             exp_exit_code="!0",
             init_system=init_system,
+            device_name=device_name,
             **kwargs,
         )
 
     @keyword("Restart Service")
-    def restart_service(self, name: str, init_system: str = "systemd", **kwargs):
+    def restart_service(
+        self,
+        name: str,
+        init_system: str = "systemd",
+        device_name: Optional[str] = None,
+        **kwargs,
+    ):
         """Restart a service
 
         Args:
             name (str): Name of the service
             init_system (str): Init. system. Defaults to 'systemd'
+            device_name (optional, str): Device
         """
-        self._control_service("restart", name, init_system=init_system, **kwargs)
+        self._control_service(
+            "restart", name, init_system=init_system, device_name=device_name, **kwargs
+        )
 
     @keyword("Reload Services Manager")
-    def reload_services_manager(self, init_system: str = "systemd", **kwargs):
+    def reload_services_manager(
+        self, init_system: str = "systemd", device_name: Optional[str] = None, **kwargs
+    ):
         """Reload the services manager
         For systemd this would be a systemctl daemon-reload
+
+        Args:
+            init_system (optional, str): Init. system. Defaults to 'systemd'
+            device_name (optional, str): Device
         """
         if init_system == "systemd":
-            return self.current.execute_command(
-                "systemctl daemon-reload", **kwargs
-            ).stdout
+            return (
+                self.get_device(device_name)
+                .execute_command("systemctl daemon-reload", **kwargs)
+                .stdout
+            )
 
         raise NotImplementedError("Currently only systemd is supported")
 
     @keyword("Get Service PID")
-    def get_service_main_pid(self, name: str, init_system: str = "systemd", **kwargs):
+    def get_service_main_pid(
+        self,
+        name: str,
+        init_system: str = "systemd",
+        device_name: Optional[str] = None,
+        **kwargs,
+    ):
         """Get the Main PID of a service
 
         Args:
             name (str): Name of the service
             init_system (str): Init. system. Defaults to 'systemd'
+            device_name (optional, str): Device
         """
-        return self._get_service_pid(name, init_system=init_system, **kwargs)
+        return self._get_service_pid(
+            name, init_system=init_system, device_name=device_name, **kwargs
+        )
 
     def _control_service(
         self,
@@ -1094,6 +1316,7 @@ class DeviceLibrary:
         name: str,
         exp_exit_code: Union[int, str] = 0,
         init_system: str = "systemd",
+        device_name: Optional[str] = None,
         **kwargs,
     ):
         """Check if a file does not exists
@@ -1103,21 +1326,26 @@ class DeviceLibrary:
             exp_exit_code (Union[int,str], optional): Expected exit code. Defaults to 0. Use '!0' if you want
                 to match against a non-zero exit code.
             init_system (str): Init. system. Defaults to 'systemd'
+            device_name (optional, str): Device
 
         """
         init_system = init_system.lower()
 
+        command = ""
         if init_system == "systemd":
             command = f"systemctl {action.lower()} {name}"
         elif init_system == "sysv":
             raise NotImplementedError("Currently only systemd is supported")
 
-        self.current.assert_command(command, exp_exit_code=exp_exit_code, **kwargs)
+        self.get_device(device_name).assert_command(
+            command, exp_exit_code=exp_exit_code, **kwargs
+        )
 
     def _get_service_pid(
         self,
         name: str,
         init_system: str = "systemd",
+        device_name: Optional[str] = None,
         **kwargs,
     ):
         """Check if a file does not exists
@@ -1127,6 +1355,7 @@ class DeviceLibrary:
             exp_exit_code (Union[int,str], optional): Expected exit code. Defaults to 0. Use '!0' if you want
                 to match against a non-zero exit code.
             init_system (str): Init. system. Defaults to 'systemd'
+            device_name (optional, str): Device
 
         """
         init_system = init_system.lower()
@@ -1136,7 +1365,7 @@ class DeviceLibrary:
         else:
             raise NotImplementedError("Currently only systemd is supported")
 
-        result = self.current.assert_command(command, **kwargs)
+        result = self.get_device(device_name).assert_command(command, **kwargs)
         pid = int(result.stdout.strip())
         return pid
 
@@ -1144,7 +1373,14 @@ class DeviceLibrary:
     # Processes
     #
     @keyword("Kill Process")
-    def kill_process(self, pid: int, signal: str = "KILL", wait: bool = True, **kwargs):
+    def kill_process(
+        self,
+        pid: int,
+        signal: str = "KILL",
+        wait: bool = True,
+        device_name: Optional[str] = None,
+        **kwargs,
+    ):
         """Kill a process using a given signal, and by default wait for the process
         to be killed.
 
@@ -1152,13 +1388,21 @@ class DeviceLibrary:
             pid (int): Process id to be killed
             signal (str): Signal to send. Defaults to 'KILL'
             wait (bool): Wait for the process to be killed. Defaults to True
+            device_name (optional, str): Device
         """
-        self.execute_command(f"kill -{signal} {pid}", ignore_exit_code=True, **kwargs)
+        self.execute_command(
+            f"kill -{signal} {pid}",
+            ignore_exit_code=True,
+            device_name=device_name,
+            **kwargs,
+        )
         if wait:
-            self.execute_command(f"kill -0 {pid}", exp_exit_code="!0", **kwargs)
+            self.execute_command(
+                f"kill -0 {pid}", exp_exit_code="!0", device_name=device_name, **kwargs
+            )
 
-    def _count_processes(self, pattern: str) -> int:
-        result = self.current.execute_command(
+    def _count_processes(self, pattern: str, device_name: Optional[str] = None) -> int:
+        result = self.get_device(device_name).execute_command(
             f"""
             pgrep -fa '{pattern}' | grep -v "pgrep -fa" | wc -l
         """.strip()
@@ -1166,8 +1410,8 @@ class DeviceLibrary:
         count = result.stdout.strip()
         return int(count)
 
-    def _find_processes(self, pattern: str) -> str:
-        result = self.current.execute_command(
+    def _find_processes(self, pattern: str, device_name: Optional[str] = None) -> str:
+        result = self.get_device(device_name).execute_command(
             f"""
             pgrep -fa '{pattern}' | grep -v "pgrep -fa"
         """.strip()
@@ -1175,13 +1419,16 @@ class DeviceLibrary:
         return result.stdout.strip()
 
     @keyword("Process Should Be Running")
-    def assert_process_exists(self, pattern: str, **kwargs):
+    def assert_process_exists(
+        self, pattern: str, device_name: Optional[str] = None, **kwargs
+    ):
         """Check if at least 1 process is running given a pattern
 
         Args:
             pattern (str): Process pattern (passed to pgrep -fa '<pattern>')
+            device_name (optional, str): Device
         """
-        self.current.assert_command(
+        self.get_device(device_name).assert_command(
             f"""
             pgrep -fa '{pattern}' | grep -v "pgrep -fa"
         """.strip(),
@@ -1189,14 +1436,17 @@ class DeviceLibrary:
         )
 
     @keyword("Process Should Not Be Running")
-    def assert_process_not_exists(self, pattern: str, **kwargs):
+    def assert_process_not_exists(
+        self, pattern: str, device_name: Optional[str] = None, **kwargs
+    ):
         """Check that there are no processes matching a given pattern
 
         Args:
             pattern (str): Process pattern (passed to pgrep -fa '<pattern>')
+            device_name (optional, str): Device
         """
-        count = self._count_processes(pattern)
-        processes = self._find_processes(pattern)
+        count = self._count_processes(pattern, device_name=device_name)
+        processes = self._find_processes(pattern, device_name=device_name)
         count = len(processes.splitlines())
         assert (
             count == 0
@@ -1204,7 +1454,12 @@ class DeviceLibrary:
 
     @keyword("Should Match Processes")
     def assert_process_count(
-        self, pattern: str, minimum: int = 1, maximum: int = None, **kwargs
+        self,
+        pattern: str,
+        minimum: int = 1,
+        maximum: Optional[int] = None,
+        device_name: Optional[str] = None,
+        **kwargs,
     ) -> int:
         """Check how many processes are running which match a given pattern
 
@@ -1212,11 +1467,12 @@ class DeviceLibrary:
             pattern (str): Process pattern (passed to pgrep -fa '<pattern>')
             minimum (int, optional): Minimum number of matches. Defaults to 1.
             maximum (int, optional): Maximum number of matches. Defaults to None.
+            device_name (optional, str): Device
 
         Returns:
             int: Count of matching processes
         """
-        processes = self._find_processes(pattern)
+        processes = self._find_processes(pattern, device_name=device_name)
         count = len(processes.splitlines())
         if minimum is not None:
             assert (
