@@ -90,6 +90,7 @@ class DeviceLibrary:
         bootstrap_script: str = DEFAULT_BOOTSTRAP_SCRIPT,
     ):
         self.devices: Dict[str, DeviceAdapter] = {}
+        self._bootstrap_scripts: Dict[str, str] = {}
         self.devices_setup_times = {}
         self.__image = image
         self.adapter = adapter
@@ -420,6 +421,7 @@ class DeviceLibrary:
         # Set if the cleanup should be called or not
         device.should_cleanup = should_cleanup
         self.devices[device_sn] = device
+        self._bootstrap_scripts[device_sn] = bootstrap_script
         configure_retry_on_members(device, "^assert_command")
         self.current = device
 
@@ -440,6 +442,22 @@ class DeviceLibrary:
             device.assert_command(bootstrap_command, log_output=True, shell=True)
 
         return device_sn
+
+    @keyword("Get Bootstrap Command")
+    def get_bootstrap_command(self, device_name: Optional[str] = None) -> str:
+        """Get a device's bootstrap command/script
+        An error will be returned if there is no bootstrap command defined
+
+        Args:
+            device_name (Optional[str], optional): Device. Defaults to the current device context.
+
+        Raises:
+            AssertionError: No bootstrap command found
+        """
+        device = self.get_device(device_name)
+        bootstrap_script = self._bootstrap_scripts.get(device.get_id(), None)
+        assert bootstrap_script, "device does not have a bootstrap script defined"
+        return bootstrap_script
 
     @keyword("Get Setup Time")
     def get_setup_time(self, name: Optional[str] = None):
