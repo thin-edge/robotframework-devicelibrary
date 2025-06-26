@@ -251,6 +251,7 @@ class DeviceLibrary:
     def setup(
         self,
         skip_bootstrap: Optional[bool] = None,
+        bootstrap_args: Optional[str] = None,
         cleanup: Optional[bool] = None,
         adapter: Optional[str] = None,
         env_file=".env",
@@ -264,6 +265,8 @@ class DeviceLibrary:
 
         Args:
             skip_bootstrap (bool, optional): Don't run the bootstrap script. Defaults to None
+            bootstrap_args (str, optional): Additional arguments to be passed to the bootstrap
+                command. Defaults to None.
             cleanup (bool, optional): Should the cleanup be run or not. Defaults to None
             adapter (str, optional): Type of adapter to use, e.g. ssh, docker etc. Defaults to None
             **adaptor_config: Additional configuration that is passed to the adapter. It will override
@@ -431,7 +434,10 @@ class DeviceLibrary:
         # But it also allows us to possibly customize which version is installed
         # for the test
         if not skip_bootstrap and bootstrap_script:
-            device.assert_command(bootstrap_script, log_output=True, shell=True)
+            bootstrap_command = bootstrap_script
+            if bootstrap_args:
+                bootstrap_command += " " + bootstrap_args
+            device.assert_command(bootstrap_command, log_output=True, shell=True)
 
         return device_sn
 
