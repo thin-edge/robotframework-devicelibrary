@@ -658,6 +658,73 @@ class DeviceLibrary:
         """
         return self._get_logs(name=name, date_from=date_from, show=show)
 
+    @keyword("Service Logs Should Contain")
+    def assert_service_log_contains(
+        self,
+        services: Optional[str] = None,
+        text: Optional[str] = None,
+        pattern: Optional[str] = None,
+        date_from: Optional[Any] = None,
+        date_to: Optional[Any] = None,
+        max_lines: Optional[int] = 100000,
+        current_only: bool = False,
+        min_matches: int = 1,
+        max_matches: Optional[int] = None,
+        device: Optional[str] = None,
+    ) -> List[str]:
+        """Assert that a given text or pattern is present in the journalctl logs
+
+        Args:
+            services (str): csv list of systemd services to include in the logs.
+                If not set then all services will be included.
+
+            text (str, optional): Assert the present of a static string (case insensitive).
+                Each line will be checked to see if it contains the given text.
+
+            pattern (str, optional): Assert that a line should match a given regular expression
+                (case insensitive). It must match the entire line.
+
+            date_from (timestamp.Timestamp, optional): Only include log entires from a given
+                datetime/timestamp. As a datetime object or a float (in seconds, e.g. linux timestamp).
+
+            date_to (timestamp.Timestamp, optional): Only include log entires to a given
+                datetime/timestamp. As a datetime object or a float (in seconds, e.g. linux timestamp).
+
+            max_lines (int, optional): Maximum number of log lines to retrieve. Defaults to 100000.
+
+            current_only (bool, optional): Only include logs from the last service invocation.
+                Defaults to False. If set to True, then only a single service can be provided
+                in the services argument.
+
+            min_matches (int, optional): Minimum number of expected line matches (inclusive).
+                Defaults to 1. Assertion will be ignored if set to None.
+
+            max_matches (int, optional): Maximum number of expected line matches (inclusive).
+                Defaults to None. Assertion will be ignored if set to None.
+
+        Returns:
+            List[str]: List of log matching entries
+        """
+        _device = self.get_device(device)
+        services_list = []
+        if services:
+            services_list = services.split(",")
+
+        if date_from is None and not current_only:
+            date_from = self.test_start_time
+
+        return _device.assert_logs(
+            services=services_list,
+            text=text,
+            pattern=pattern,
+            date_from=date_from,
+            date_to=date_to,
+            max_lines=max_lines,
+            current_only=current_only,
+            min_matches=min_matches,
+            max_matches=max_matches,
+        )
+
     @keyword("Logs Should Contain")
     def assert_log_contains(
         self,
