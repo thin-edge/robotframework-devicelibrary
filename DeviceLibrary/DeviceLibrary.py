@@ -791,7 +791,7 @@ class DeviceLibrary:
         if max_matches is not None:
             assert len(matches) <= max_matches, (
                 "Total matching log entries is greater than expected. "
-                f"wanted={min_matches} (max)\n"
+                f"wanted={max_matches} (max)\n"
                 f"got={len(matches)}\n\n"
                 f"entries:\n{matches}"
             )
