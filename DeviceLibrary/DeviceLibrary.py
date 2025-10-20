@@ -108,6 +108,7 @@ class DeviceLibrary:
         # Configure retries
         configure_retry_on_members(self, "^assert_log_contains")
         configure_retry_on_members(self, "^assert_log_not_contains")
+        configure_retry_on_members(self, "^assert_service_log_contains")
 
     def _get_adapter(self) -> str:
         return (
