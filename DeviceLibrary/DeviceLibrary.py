@@ -109,6 +109,7 @@ class DeviceLibrary:
         configure_retry_on_members(self, "^assert_log_contains")
         configure_retry_on_members(self, "^assert_log_not_contains")
         configure_retry_on_members(self, "^assert_service_log_contains")
+        configure_retry_on_members(self, "^assert_directory_file_count")
 
     def _get_adapter(self) -> str:
         return (
@@ -1033,6 +1034,7 @@ class DeviceLibrary:
             **kwargs,
         )
 
+    # There should be no leftover temporary files
     @keyword("Directory Should Exist")
     def assert_directory(self, path: str, device_name: Optional[str] = None, **kwargs):
         """Check if a directory exists
@@ -1053,6 +1055,40 @@ class DeviceLibrary:
             device_name (optional, str): Device
         """
         self.get_device(device_name).assert_command(f"! test -d '{path}'", **kwargs)
+
+    @keyword("Directory Should Have File Count")
+    def assert_directory_file_count(
+        self,
+        path: str,
+        minimum: int,
+        maximum: Optional[int] = None,
+        device_name: Optional[str] = None,
+        **kwargs,
+    ):
+        """Check if a directory has a specific number of files
+
+        Args:
+            path (str): Directory path
+            minimum (int): Minimum expected number of files
+            maximum (int, optional): Maximum expected number of files
+            device_name (optional, str): Device
+        """
+        files = self.get_device(device_name).assert_command(
+            f"find '{path}' -maxdepth 1 -type f", **kwargs
+        )
+        file_list = files.stdout.splitlines()
+        actual_count = len(file_list)
+
+        assert actual_count >= minimum, (
+            f"Directory '{path}' has {actual_count} files, expected minimum {minimum}.\n"
+            f"Files: {file_list}"
+        )
+
+        if maximum is not None:
+            assert actual_count <= maximum, (
+                f"Directory '{path}' has {actual_count} files, expected maximum {maximum}.\n"
+                f"Files: {file_list}"
+            )
 
     @keyword("File Should Exist")
     def assert_file_exists(
