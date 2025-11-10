@@ -842,6 +842,8 @@ class DeviceLibrary:
     def transfer_to_device(self, src: str, dst: str, device_name: Optional[str] = None):
         """Transfer files to a device
 
+        Note: The command will fail if the src pattern does not match at least 1 file or folder
+
         Examples:
 
             | Transfer To Device | src=${CURDIR}/myfile.txt | dst=/etc/any/path/newfilename.txt |
