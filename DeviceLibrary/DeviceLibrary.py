@@ -110,6 +110,7 @@ class DeviceLibrary:
         configure_retry_on_members(self, "^assert_log_not_contains")
         configure_retry_on_members(self, "^assert_service_log_contains")
         configure_retry_on_members(self, "^assert_directory_file_count")
+        configure_retry_on_members(self, "^_get_service_pid")
 
     def _get_adapter(self) -> str:
         return (
@@ -1493,12 +1494,19 @@ class DeviceLibrary:
         init_system = init_system.lower()
 
         if init_system == "systemd":
+            # Note: this command will return a zero exit code even when the MainPID does not exist
+            # so the value must be checked before assuming a valid PID was returned
             command = f"systemctl show --property MainPID --value {name}"
         else:
             raise NotImplementedError("Currently only systemd is supported")
 
         result = self.get_device(device_name).assert_command(command, **kwargs)
-        pid = int(result.stdout.strip())
+        pid_str = result.stdout.strip()
+        if not pid_str.isdigit():
+            raise AssertionError(
+                f"Expected the PID to be a number, but got '{pid_str}'"
+            )
+        pid = int(pid_str)
         return pid
 
     #
