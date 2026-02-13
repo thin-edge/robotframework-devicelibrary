@@ -110,6 +110,10 @@ class DeviceLibrary:
         configure_retry_on_members(self, "^assert_log_not_contains")
         configure_retry_on_members(self, "^assert_service_log_contains")
         configure_retry_on_members(self, "^assert_directory_file_count")
+        configure_retry_on_members(self, "^assert_file_contains")
+        configure_retry_on_members(self, "^assert_file_not_contains")
+        configure_retry_on_members(self, "^assert_file_contents_equal")
+        configure_retry_on_members(self, "^assert_file_contents_not_equal")
         configure_retry_on_members(self, "^_get_service_pid")
 
     def _get_adapter(self) -> str:
