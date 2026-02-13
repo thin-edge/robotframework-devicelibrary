@@ -1206,6 +1206,86 @@ class DeviceLibrary:
             file, reference_file, **kwargs
         )
 
+    @keyword("File Should Contain Text")
+    def assert_file_contains(
+        self, file: str, text: str, device_name: Optional[str] = None, **kwargs
+    ):
+        """Assert that a file contains a given text
+
+        Args:
+            file (str): path to file on the device
+            text (str): text to check for in the file
+            device_name (optional, str): Device
+        """
+        command = f"grep -F '{text}' '{file}'"
+        output = self.get_device(device_name).assert_command(command, **kwargs)
+        return output.stdout
+
+    @keyword("File Should Not Contain Text")
+    def assert_file_not_contains(
+        self, file: str, text: str, device_name: Optional[str] = None, **kwargs
+    ):
+        """Assert that a file does not contain a given text
+
+        Args:
+            file (str): path to file on the device
+            text (str): text to check for in the file
+            device_name (optional, str): Device
+        """
+        command = f"grep -v -F '{text}' '{file}'"
+        output = self.get_device(device_name).assert_command(command, **kwargs)
+        return output.stdout
+
+    @keyword("File Contents Should Be Equal")
+    def assert_file_contents_equal(
+        self,
+        file: str,
+        value: str,
+        device_name: Optional[str] = None,
+        **kwargs,
+    ):
+        """Assert that a file's contents on the device is equal to a given string (assuming utf-8 encoding)
+
+        Args:
+            file (str): path to file on the device
+            value (str): contents to compare against
+            device_name (optional, str): Device
+        """
+        device = self.get_device(device_name)
+        output = device.assert_command(f"cat '{file}'", **kwargs)
+        file_contents = output.stdout
+        assert file_contents == value, (
+            f"File '{file}' contents is not equal to the expected contents.\n"
+            f"Expected:\n{value}\n\n"
+            f"Actual:\n{file_contents}"
+        )
+        return file_contents
+
+    @keyword("File Contents Should Not Be Equal")
+    def assert_file_contents_not_equal(
+        self,
+        file: str,
+        value: str,
+        device_name: Optional[str] = None,
+        **kwargs,
+    ):
+        """Assert that a file's contents on the device is NOT equal to a given string (assuming utf-8 encoding)
+
+        Args:
+            file (str): path to file on the device
+            value (str): contents to compare against
+            device_name (optional, str): Device
+        """
+        device = self.get_device(device_name)
+        output = device.assert_command(f"cat '{file}'", **kwargs)
+        file_contents = output.stdout
+        assert file_contents != value, (
+            f"File '{file}' contents is equal to the expected contents, but it should not be.\n"
+            f"Expected:\n{value}\n\n"
+            f"Actual:\n{file_contents}"
+        )
+        return file_contents
+
     #
     # Service Control
     #
