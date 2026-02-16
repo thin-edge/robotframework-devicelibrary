@@ -8,6 +8,7 @@ It currently support the creation of Docker devices only
 import logging
 from typing import Any, Dict, List, Union, Optional
 from datetime import datetime, timezone
+from dataclasses import dataclass
 import re
 import os
 import time
@@ -64,6 +65,13 @@ def normalize_container_name(name: str) -> str:
     return re.sub("[^a-zA-Z0-9_.-]", "", name)
 
 
+@dataclass
+class DeviceUnderTest:
+    name: str
+    adapter: DeviceAdapter
+    cleanup_after_suite: bool
+
+
 @library(scope="SUITE", auto_keywords=False)
 class DeviceLibrary:
     """Device Library"""
@@ -89,7 +97,7 @@ class DeviceLibrary:
         image: str = DEFAULT_IMAGE,
         bootstrap_script: str = DEFAULT_BOOTSTRAP_SCRIPT,
     ):
-        self.devices: Dict[str, DeviceAdapter] = {}
+        self.devices: Dict[str, DeviceUnderTest] = {}
         self._bootstrap_scripts: Dict[str, str] = {}
         self.devices_setup_times = {}
         self.__image = image
@@ -98,6 +106,11 @@ class DeviceLibrary:
         self.current: Optional[DeviceAdapter] = None
         self.test_start_time: Optional[datetime] = None
         self.suite_start_time: Optional[datetime] = None
+
+        # internal flag to track if the tests have started or not
+        # helpful when determining when to run the corresponding cleanup
+        # (i.e. after the suite is finished or the test)
+        self._tests_started = False
 
         # load any settings from dotenv file
         dotenv.load_dotenv(".env")
@@ -161,6 +174,7 @@ class DeviceLibrary:
             ts = self.get_unix_timestamp_from_host(milliseconds=False)
 
         self.test_start_time = datetime.fromtimestamp(ts, tz=timezone.utc)
+        self._tests_started = True
 
     def end_suite(self, _data: Any, result: Any):
         """End suite hook which is called by Robot Framework
@@ -171,8 +185,7 @@ class DeviceLibrary:
             result (Any): Test details
         """
         logger.info("Suite %s (%s) ending", result.name, result.message)
-        self.teardown()
-        self.devices.clear()
+        self.teardown_suite()
 
     def end_test(self, _data: Any, result: Any):
         """End test hook which is called by Robot Framework
@@ -185,6 +198,13 @@ class DeviceLibrary:
         logger.info("Listener: detected end of test")
         if not result.passed:
             logger.info("Test '%s' failed: %s", result.name, result.message)
+
+        # cleanup any resources after the test
+        self.teardown()
+
+    def is_in_test(self) -> bool:
+        """Check if currently in a test case execution"""
+        return self._tests_started
 
     #
     # Keywords / helpers
@@ -261,6 +281,7 @@ class DeviceLibrary:
         skip_bootstrap: Optional[bool] = None,
         bootstrap_args: Optional[str] = None,
         cleanup: Optional[bool] = None,
+        cleanup_after_suite: Optional[bool] = None,
         adapter: Optional[str] = None,
         env_file=".env",
         **adaptor_config,
@@ -276,6 +297,9 @@ class DeviceLibrary:
             bootstrap_args (str, optional): Additional arguments to be passed to the bootstrap
                 command. Defaults to None.
             cleanup (bool, optional): Should the cleanup be run or not. Defaults to None
+            cleanup_after_suite (bool, optional): Should the cleanup be run after the suite or after a test. Defaults to None.
+                If not set, then it will be auto detected when the cleanup should occur based on when the setup was launch
+                in the suite setup or not.
             adapter (str, optional): Type of adapter to use, e.g. ssh, docker etc. Defaults to None
             **adaptor_config: Additional configuration that is passed to the adapter. It will override
                 any existing settings.
@@ -427,7 +451,12 @@ class DeviceLibrary:
 
         # Set if the cleanup should be called or not
         device.should_cleanup = should_cleanup
-        self.devices[device_sn] = device
+        cleanup_after_suite = cleanup_after_suite
+        if cleanup_after_suite is None:
+            cleanup_after_suite = not self.is_in_test()
+        self.devices[device_sn] = DeviceUnderTest(
+            name=device_sn, adapter=device, cleanup_after_suite=cleanup_after_suite
+        )
         self._bootstrap_scripts[device_sn] = bootstrap_script
         configure_retry_on_members(device, "^assert_command")
         self.current = device
@@ -583,12 +612,46 @@ class DeviceLibrary:
 
     def teardown(self):
         """Stop and cleanup the device"""
-        for name, device in self.devices.items():
+        devices = self.devices.copy()
+        for name, dut in self.devices.items():
             try:
+                if dut.cleanup_after_suite:
+                    logger.debug(
+                        "Skipping cleanup for device %s as it is not marked for suite cleanup",
+                        name,
+                    )
+                    continue
                 logger.info("Cleaning up device: %s", name)
-                device.cleanup()
+
+                dut.adapter.cleanup()
+                if self.current == dut.adapter:
+                    self.current = None
+                del devices[name]
             except Exception as ex:
                 logger.warning("Error during device cleanup. %s", ex)
+
+        self.devices = devices
+
+    def teardown_suite(self):
+        """Stop and cleanup the device"""
+        devices = self.devices.copy()
+        for name, dut in self.devices.items():
+            try:
+                if not dut.cleanup_after_suite:
+                    logger.debug(
+                        "Skipping cleanup for device %s as it is not marked for suite cleanup",
+                        name,
+                    )
+                    continue
+                logger.info("Cleaning up device: %s", name)
+                dut.adapter.cleanup()
+                if self.current == dut.adapter:
+                    self.current = None
+                del devices[name]
+            except Exception as ex:
+                logger.warning("Error during device cleanup. %s", ex)
+
+        self.devices = devices
 
     def get_device(self, name: Optional[str] = None) -> DeviceAdapter:
         """Get the current device, or the device with the given name
@@ -608,7 +671,12 @@ class DeviceLibrary:
                 name in self.devices
             ), f"Name not found existing device adapters: {list(self.devices.keys())}"
 
-            device = self.devices.get(name)
+            item = self.devices.get(name)
+            if item is None:
+                raise AssertionError(
+                    f"Device with name '{name}' not found. Available devices: {list(self.devices.keys())}"
+                )
+            device = item.adapter
         assert device
         return device
 
