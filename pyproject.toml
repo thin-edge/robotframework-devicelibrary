@@ -23,7 +23,7 @@ dynamic = ["version"]
 dependencies = [
   "robotframework >= 6.0.0, < 8.0.0",
   "unidecode >= 1.3.6, < 2.0.0",
-  "device-test-core @ git+https://github.com/reubenmiller/device-test-core.git@f6110065b6dc5ac4850dc5dc6c04aedf42b9c6ee",
+  "device-test-core @ git+https://github.com/reubenmiller/device-test-core.git@e67ccf13aa5c810a3d4a59c265e05aa2a614f163",
 ]
 
 [project.optional-dependencies]
@@ -33,13 +33,13 @@ all = [
     "robotframework-devicelibrary[local]",
 ]
 ssh = [
-    "device-test-core[ssh] @ git+https://github.com/reubenmiller/device-test-core.git@f6110065b6dc5ac4850dc5dc6c04aedf42b9c6ee",
+    "device-test-core[ssh] @ git+https://github.com/reubenmiller/device-test-core.git@e67ccf13aa5c810a3d4a59c265e05aa2a614f163",
 ]
 local = [
-    "device-test-core[local] @ git+https://github.com/reubenmiller/device-test-core.git@f6110065b6dc5ac4850dc5dc6c04aedf42b9c6ee",
+    "device-test-core[local] @ git+https://github.com/reubenmiller/device-test-core.git@e67ccf13aa5c810a3d4a59c265e05aa2a614f163",
 ]
 docker = [
-    "device-test-core[docker] @ git+https://github.com/reubenmiller/device-test-core.git@f6110065b6dc5ac4850dc5dc6c04aedf42b9c6ee",
+    "device-test-core[docker] @ git+https://github.com/reubenmiller/device-test-core.git@e67ccf13aa5c810a3d4a59c265e05aa2a614f163",
 ]
 
 test = [
