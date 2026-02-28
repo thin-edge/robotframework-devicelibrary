@@ -233,7 +233,7 @@ class DeviceLibrary:
         return self.suite_start_time
 
     @keyword("Get Unix Timestamp")
-    def get_unix_timestamp(self, milliseconds: bool = False) -> Union[int, float]:
+    def get_unix_timestamp(self, milliseconds: bool = True) -> Union[int, float]:
         """Get the unix timestamp of the device (number of seconds since 1970-01-01).
         This returns the unix timestamp of the device under test, not the host where
         the test is being called from.
