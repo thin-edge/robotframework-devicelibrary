@@ -6,7 +6,7 @@ It currently support the creation of Docker devices only
 """
 
 import logging
-from typing import Any, Dict, List, Union, Optional
+from typing import Any, Dict, List, Tuple, Union, Optional
 from datetime import datetime, timezone
 import re
 import os
@@ -90,6 +90,8 @@ class DeviceLibrary:
         bootstrap_script: str = DEFAULT_BOOTSTRAP_SCRIPT,
     ):
         self.devices: Dict[str, DeviceAdapter] = {}
+        # Compose stacks indexed by the serial number of their main device
+        self._compose_stacks: Dict[str, Any] = {}
         self._bootstrap_scripts: Dict[str, str] = {}
         self.devices_setup_times = {}
         self.__image = image
@@ -173,6 +175,7 @@ class DeviceLibrary:
         logger.info("Suite %s (%s) ending", result.name, result.message)
         self.teardown()
         self.devices.clear()
+        self._compose_stacks.clear()
 
     def end_test(self, _data: Any, result: Any):
         """End test hook which is called by Robot Framework
@@ -255,6 +258,83 @@ class DeviceLibrary:
             return time.time()
         return int(time.time())
 
+    def _get_extra_hosts(self, env_file: str) -> Dict[str, str]:
+        """Read any environment variables which contain a host to ip mapping
+        as they will be added to the /etc/hosts list of docker/compose devices
+        to reduce any problems with external ip addresses
+
+        Example env variable:
+            DEVICELIBRARY_HOST_MYDOMAIN="example.mydomain.com=1.2.3.4"
+        """
+        extra_hosts = {}
+        if os.path.exists(env_file):
+            env_values = dotenv.dotenv_values(env_file)
+            hosts = [
+                key
+                for key in env_values.keys()
+                if key.startswith("DEVICELIBRARY_HOST_")
+            ]
+
+            for key in hosts:
+                entry = env_values.get(key)
+                if entry:
+                    hostname, _, ip_address = entry.partition("=")
+                    hostname = re.sub(r"^\w+://", "", hostname)
+                    if hostname and ip_address:
+                        extra_hosts[hostname] = ip_address
+        return extra_hosts
+
+    def _setup_compose_stack(
+        self,
+        device_sn: str,
+        compose_file: str,
+        env_file: str,
+        config: Dict[str, Any],
+    ) -> DeviceAdapter:
+        """Create a docker compose stack and register every service of the
+        stack as a device. The main device (under test) is returned, all other
+        services are addressable using '<serial>:<service>'
+        """
+        try:
+            from device_test_core.compose.factory import ComposeDeviceFactory
+
+            compose_factory = ComposeDeviceFactory()
+        except (ImportError, AttributeError):
+            raise_adapter_error("docker")
+
+        env = config.pop("env", None) or {}
+        stack = compose_factory.create_stack(
+            compose_file,
+            device_service=config.pop("device_service", None),
+            env_file=env_file,
+            env={**env, "DEVICE_ID": device_sn},
+            extra_hosts=self._get_extra_hosts(env_file),
+            **config,
+        )
+        self._compose_stacks[device_sn] = stack
+
+        device = stack.get_device(
+            stack.device_service, name=device_sn, device_id=device_sn
+        )
+
+        # Register the other services of the stack so they are addressable
+        # via device_name=<serial>:<service>
+        for service_name in stack.services:
+            if service_name == stack.device_service:
+                continue
+            service_device = stack.get_device(
+                service_name,
+                name=f"{device_sn}:{service_name}",
+                device_id=device_sn,
+            )
+            # The stack is torn down via the main device to avoid services
+            # triggering the (idempotent) stack cleanup multiple times
+            service_device.should_cleanup = False
+            configure_retry_on_members(service_device, "^assert_command")
+            self.devices[service_device.name] = service_device
+
+        return device
+
     @keyword("Setup")
     def setup(
         self,
@@ -271,6 +351,20 @@ class DeviceLibrary:
         from the library settings which controls what device
         interface is used, e.g. docker or ssh.
 
+        Docker adapter:
+            If a 'compose_file' is provided (either as keyword argument or via
+            the &{DOCKER_CONFIG} variable), then the whole stack defined in the
+            given docker compose file is created instead of a single container.
+            Each setup gets its own isolated compose project (unique project
+            name, network, volumes), so test suites can run in parallel.
+
+            One service of the stack acts as the main device under test (see
+            the 'device_service' argument). All other services are registered
+            as additional devices using the name '<serial>:<service>', e.g.
+
+            | ${SERIAL}=    Setup    compose_file=${CURDIR}/docker-compose.yaml |
+            | Execute Command    ls -l    device_name=${SERIAL}:broker |
+
         Args:
             skip_bootstrap (bool, optional): Don't run the bootstrap script. Defaults to None
             bootstrap_args (str, optional): Additional arguments to be passed to the bootstrap
@@ -278,7 +372,14 @@ class DeviceLibrary:
             cleanup (bool, optional): Should the cleanup be run or not. Defaults to None
             adapter (str, optional): Type of adapter to use, e.g. ssh, docker etc. Defaults to None
             **adaptor_config: Additional configuration that is passed to the adapter. It will override
-                any existing settings.
+                any existing settings. Notable docker adapter settings:
+                compose_file (str): Path to a docker compose file. The whole
+                    stack will be created (compose mode).
+                device_service (str): Name of the compose service acting as the
+                    main device under test (compose mode). If not set, it is
+                    resolved from the compose file (label
+                    'device-test-core.role: main', single service, or a service
+                    named 'device')
 
         Returns:
             str: Device serial number
@@ -316,49 +417,35 @@ class DeviceLibrary:
         bootstrap_script = config.pop("bootstrap_script", self.__bootstrap_script)
 
         if adapter_type == "docker":
-            docker_device_factory = None
-            try:
-                from device_test_core.docker.factory import DockerDeviceFactory
-
-                docker_device_factory = DockerDeviceFactory()
-            except (ImportError, AttributeError):
-                raise_adapter_error(adapter_type)
-
             device_sn = normalize_container_name(generate_custom_name())
+            compose_file = config.pop("compose_file", None)
 
-            # Use any env variables which contain a host to ip mapping
-            # as it will be added to the docker /etc/hosts list to reduce
-            # any problems with external ip addresses
-            # Example env variable:
-            #   DEVICELIBRARY_HOST_MYDOMAIN="example.mydomain.com=1.2.3.4"
-            #
-            extra_hosts = {}
-            if os.path.exists(env_file):
-                env_values = dotenv.dotenv_values(env_file)
-                hosts = [
-                    key
-                    for key in env_values.keys()
-                    if key.startswith("DEVICELIBRARY_HOST_")
-                ]
+            if compose_file:
+                device = self._setup_compose_stack(
+                    device_sn,
+                    compose_file,
+                    env_file=env_file,
+                    config=config,
+                )
+            else:
+                docker_device_factory = None
+                try:
+                    from device_test_core.docker.factory import DockerDeviceFactory
 
-                for key in hosts:
-                    entry = env_values.get(key)
-                    if entry:
-                        hostname, _, ip_address = entry.partition("=")
-                        hostname = re.sub(r"^\w+://", "", hostname)
-                        if hostname and ip_address:
-                            extra_hosts[hostname] = ip_address
+                    docker_device_factory = DockerDeviceFactory()
+                except (ImportError, AttributeError):
+                    raise_adapter_error(adapter_type)
 
-            if docker_device_factory is None:
-                raise Exception(f"Could not import adapter. type={adapter_type}")
+                if docker_device_factory is None:
+                    raise Exception(f"Could not import adapter. type={adapter_type}")
 
-            device = docker_device_factory.create_device(
-                device_sn,
-                image=config.pop("image", self.__image),
-                env_file=env_file,
-                extra_hosts=extra_hosts,
-                **config,
-            )
+                device = docker_device_factory.create_device(
+                    device_sn,
+                    image=config.pop("image", self.__image),
+                    env_file=env_file,
+                    extra_hosts=self._get_extra_hosts(env_file),
+                    **config,
+                )
         elif adapter_type == "ssh":
             ssh_device_factory = None
             try:
@@ -580,6 +667,95 @@ class DeviceLibrary:
 
         """
         self.get_device(device_name).connect_network()
+
+    def _get_compose_stack(self, device_name: Optional[str] = None):
+        """Get the compose stack which a device belongs to
+
+        Args:
+            device_name (optional, str): Device. Defaults to the current device.
+
+        Raises:
+            AssertionError: The device was not created from a compose file
+        """
+        device = self.get_device(device_name)
+        base_name, _, _ = device.name.partition(":")
+        stack = self._compose_stacks.get(base_name)
+        assert stack, (
+            f"Device '{device.name}' was not created from a docker compose file. "
+            "This keyword requires the device to be created using "
+            "'Setup compose_file=...'"
+        )
+        return stack
+
+    @keyword("Get Service Port")
+    def get_service_port(
+        self,
+        service: str,
+        port: Union[int, str],
+        protocol: str = "tcp",
+        device_name: Optional[str] = None,
+    ) -> Tuple[str, int]:
+        """Get the host address/port under which an (ephemeral) published
+        container port of a compose service is reachable from the test host.
+
+        Only available for devices created from a docker compose file. The
+        service must publish the port without a fixed host port, e.g.
+        'ports: ["1883"]', so that parallel test runs do not conflict.
+
+        Examples:
+
+            | ${HOST}    ${PORT}=    Get Service Port    service=broker    port=1883 |
+
+        Args:
+            service (str): Compose service name
+            port (Union[int, str]): Container port, e.g. 1883
+            protocol (str, optional): Port protocol. Defaults to 'tcp'.
+            device_name (optional, str): Device
+
+        Returns:
+            Tuple[str, int]: Host address and host port
+        """
+        stack = self._get_compose_stack(device_name)
+        host, host_port = stack.get_service_port(service, int(port), protocol)
+        return host, host_port
+
+    @keyword("Get Service Logs")
+    def get_service_logs(
+        self,
+        service: Optional[str] = None,
+        device_name: Optional[str] = None,
+        show: bool = True,
+    ) -> List[str]:
+        """Get the container logs (docker compose logs) of one or all services
+        of the compose stack a device belongs to.
+
+        Unlike 'Get Logs' (which reads journalctl inside the device), this
+        keyword reads the container output of the services, which is useful
+        for supporting services that don't run systemd (e.g. brokers,
+        registries, simulators).
+
+        Only available for devices created from a docker compose file.
+
+        Examples:
+
+            | ${lines}=    Get Service Logs    service=broker |
+            | ${lines}=    Get Service Logs |
+
+        Args:
+            service (str, optional): Only include logs of the given service.
+                Defaults to all services.
+            device_name (optional, str): Device
+            show (bool, optional): Show/Display the log entries
+
+        Returns:
+            List[str]: Log lines
+        """
+        stack = self._get_compose_stack(device_name)
+        log_output = stack.get_logs(service=service)
+        if show:
+            for line in log_output:
+                print(line)
+        return log_output
 
     def teardown(self):
         """Stop and cleanup the device"""

@@ -1,0 +1,15 @@
+services:
+  device:
+    image: alpine:3.23
+    command: sleep infinity
+    environment:
+      - DEVICE_ID=${DEVICE_ID:-unknown}
+    labels:
+      device-test-core.role: main
+  helper:
+    image: alpine:3.23
+    command: sleep infinity
+  web:
+    image: nginx:alpine
+    ports:
+      - "80"
