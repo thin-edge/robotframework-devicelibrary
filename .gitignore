@@ -13,3 +13,4 @@ log.html
 report.html
 output.xml
 DeviceLibrary/_version.py
+output/

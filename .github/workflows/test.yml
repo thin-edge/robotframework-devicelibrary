@@ -1,0 +1,50 @@
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version-file: .python-version
+
+      - name: Install dependencies
+        run: pip install -e ".[all]"
+
+      - name: Build test image
+        run: docker build -t debian-systemd tests/images/debian-systemd
+
+      - name: Start ssh test device
+        run: |
+          docker run -d --rm --name ssh-device --privileged --tmpfs /run --tmpfs /tmp -p 2222:22 debian-systemd
+          # Wait for the ssh service to be ready
+          for i in $(seq 1 30); do
+            if docker exec ssh-device systemctl is-active ssh >/dev/null 2>&1; then
+              echo "ssh service is ready"
+              break
+            fi
+            sleep 1
+          done
+
+      - name: Run tests (local, ssh, docker and docker compose adapters)
+        env:
+          SSH_CONFIG_HOSTNAME: 127.0.0.1
+          SSH_CONFIG_PORT: "2222"
+          SSH_CONFIG_USERNAME: root
+          SSH_CONFIG_PASSWORD: inttest
+        run: python -m robot --outputdir output --name acceptance tests/acceptance
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: robot-reports
+          path: output/
