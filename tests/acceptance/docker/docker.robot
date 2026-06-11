@@ -9,6 +9,9 @@ Create A Single Container Device
     ${SERIAL}=    Setup    skip_bootstrap=${True}    image=alpine:3.19
     ${output}=    Execute Command    echo device $DEVICE_ID    strip=${True}
     Should Be Equal    ${output}    device ${SERIAL}
+    # in single container mode the container is named after the serial number
+    ${name}=    Get Container Name
+    Should Be Equal    ${name}    ${SERIAL}
 
 Create Multiple Devices In One Suite
     ${DEVICE1}=    Setup    skip_bootstrap=${True}    image=alpine:3.19

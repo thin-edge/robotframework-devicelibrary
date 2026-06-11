@@ -6,6 +6,16 @@ Library          DeviceLibrary    adapter=docker
 *** Test Cases ***
 Create A Stack From A Compose File
     ${SERIAL}=    Setup    skip_bootstrap=${True}    compose_file=${CURDIR}/docker-compose.yaml
+    # the compose project is named after the device serial number so the
+    # stack is easily identifiable, e.g. docker compose -p <project> ps
+    ${PROJECT}=    Get Compose Project Name
+    ${expected}=    Evaluate    $SERIAL.lower()
+    Should Be Equal    ${PROJECT}    ${expected}
+    # compose generates the container names from the project and service names
+    ${name}=    Get Container Name
+    Should Be Equal    ${name}    ${PROJECT}-device-1
+    ${name}=    Get Container Name    device_name=${SERIAL}:helper
+    Should Be Equal    ${name}    ${PROJECT}-helper-1
     # main device (labelled with device-test-core.role: main) answers by default
     ${output}=    Execute Command    echo device says $DEVICE_ID    strip=${True}
     Should Be Equal    ${output}    device says ${SERIAL}

@@ -106,7 +106,7 @@ services:
       - "1883"
 ```
 
-Each `Setup` creates the stack under a unique compose project name, so all containers, networks and volumes are isolated per test setup and suites can run in parallel. To keep it that way, the compose file must not use `container_name`, fixed host ports (e.g. `8080:80`, use ephemeral ports like `"80"` plus the `Get Service Port` keyword instead), or external/fixed-name networks and volumes. The compose file is validated and the setup is rejected with an explanatory error if it contains such settings.
+Each `Setup` creates the stack under a unique compose project name (defaulting to the device serial number, e.g. containers are named `tst_xyz-device-1`), so all containers, networks and volumes are isolated per test setup and suites can run in parallel. Use the `Get Compose Project Name` keyword to retrieve it, e.g. to inspect a stack manually with `docker compose -p <project> ps`. To keep it that way, the compose file must not use `container_name`, fixed host ports (e.g. `8080:80`, use ephemeral ports like `"80"` plus the `Get Service Port` keyword instead), or external/fixed-name networks and volumes. The compose file is validated and the setup is rejected with an explanatory error if it contains such settings.
 
 The `compose_file` and `device_service` settings can also be provided via the `&{DOCKER_CONFIG}` variable instead of keyword arguments.
 
